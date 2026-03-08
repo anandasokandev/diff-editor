@@ -64,19 +64,26 @@ npm install
 
 ### 2. Set your Gemini API key
 
-The app uses the **Gemini API** via a local Express proxy.
+Copy the example environment file and add your key:
 
-**Windows (PowerShell):**
-```powershell
-$env:GEMINI_API_KEY="AIza-your-key-here"
-```
-
-**Mac / Linux:**
 ```bash
-export GEMINI_API_KEY=AIza-your-key-here
+# Windows (PowerShell)
+Copy-Item .env.example .env
+
+# Mac / Linux
+cp .env.example .env
 ```
 
-Get your key → https://aistudio.google.com/app/apikey
+Then open `.env` and fill in your key:
+
+```env
+GOOGLE_API_KEY=AIza-your-actual-key-here
+```
+
+Get your Gemini API key → https://aistudio.google.com/app/apikey
+
+> **Note:** `.env` is gitignored — your key will never be committed to the repo.
+> `.env.example` is the safe, committed template with no real values.
 
 ### 3. Start both servers
 ```bash

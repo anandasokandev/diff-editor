@@ -1,19 +1,22 @@
 // server/proxy.js
 // Run with: node server/proxy.js
-// This proxies /api/claude → https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent
+// This proxies /api/claude → Gemini text API and /api/image → Gemini image API
 // so the browser never calls Google directly (no CORS issue).
+
+// ── Load .env file from project root automatically
+require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 
 const http = require('http');
 const https = require('https');
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 const API_KEY = process.env.GOOGLE_API_KEY || '';
 
 if (!API_KEY) {
-  console.warn('\n⚠  WARNING: GOOGLE_API_KEY env var is not set.');
-  console.warn('   Set it before starting:');
-  console.warn('   Linux/Mac: export GOOGLE_API_KEY=AIza...');
-  console.warn('   Windows: set GOOGLE_API_KEY=AIza...\n');
+  console.warn('\n⚠  WARNING: GOOGLE_API_KEY is not set.');
+  console.warn('   Add it to your .env file:');
+  console.warn('   GOOGLE_API_KEY=AIza-your-key-here');
+  console.warn('   Then restart the proxy.\n');
 }
 
 const server = http.createServer((req, res) => {
@@ -106,7 +109,9 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, () => {
   console.log(`\n✅  Craftly proxy running at http://localhost:${PORT}`);
-  console.log(`   /api/claude  →  https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent`);
-  console.log(`\n   Make sure Angular is on http://localhost:4200`);
-  console.log(`   API key set: ${API_KEY ? 'YES ✓' : 'NO ✗  (set GOOGLE_API_KEY)'}\n`);
+  console.log(`   Loaded .env : ${require('path').resolve(__dirname, '../.env')}`);
+  console.log(`   API key     : ${API_KEY ? 'SET ✓' : 'MISSING ✗  — add GOOGLE_API_KEY to your .env'}`);
+  console.log(`\n   /api/claude  → Gemini text generation`);
+  console.log(`   /api/image   → Gemini image generation`);
+  console.log(`\n   Angular dev server → http://localhost:4200\n`);
 });
