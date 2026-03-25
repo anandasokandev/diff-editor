@@ -1,71 +1,84 @@
 import { Component, Input, Output, EventEmitter, OnChanges } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { CanvasService } from '../../services/canvas.service';
 import { AiService } from '../../services/ai.service';
 
 @Component({
     selector: 'app-img-modal',
-    imports: [CommonModule, FormsModule],
+    imports: [FormsModule],
     template: `
-    <div class="overlay" *ngIf="visible" (click)="onOverlayClick($event)">
-      <div class="modal">
-
-        <div class="modal-head">
-          <div>
-            <div class="modal-title">🤖 AI Image Generator</div>
-            <div class="modal-sub">Generate images from prompts via Gemini AI</div>
+    @if (visible) {
+      <div class="overlay" (click)="onOverlayClick($event)">
+        <div class="modal">
+          <div class="modal-head">
+            <div>
+              <div class="modal-title">🤖 AI Image Generator</div>
+              <div class="modal-sub">Generate images from prompts via Gemini AI</div>
+            </div>
+            <button class="close-btn" (click)="doClose()">✕</button>
           </div>
-          <button class="close-btn" (click)="doClose()">✕</button>
-        </div>
-
-        <div class="modal-body">
-          <div class="gen-box">
-            <div class="input-row">
-              <input class="img-input" [(ngModel)]="imgPrompt"
-                placeholder="Describe the image you want…"
-                (keydown.enter)="generate()" />
-              <button class="gen-small-btn" [disabled]="loading" (click)="generate()">
-                {{ loading ? '…' : 'Generate' }}
-              </button>
-            </div>
-
-            <div class="chips">
-              <div *ngFor="let c of quickPrompts" class="chip"
-                [class.active]="imgPrompt === c.value"
-                (click)="imgPrompt = c.value">{{ c.label }}</div>
-            </div>
-
-            <!-- Loading placeholders -->
-            <div *ngIf="loading" class="img-grid">
-              <div *ngFor="let _ of [0,1,2]" class="img-loading">
-                <div class="spinner"></div>
-                <span>Generating…</span>
+          <div class="modal-body">
+            <div class="gen-box">
+              <div class="input-row">
+                <input class="img-input" [(ngModel)]="imgPrompt"
+                  placeholder="Describe the image you want…"
+                  (keydown.enter)="generate()" />
+                <button class="gen-small-btn" [disabled]="loading" (click)="generate()">
+                  {{ loading ? '…' : 'Generate' }}
+                </button>
               </div>
-            </div>
-
-            <!-- Results -->
-            <div *ngIf="!loading && results.length" class="img-grid">
-              <div *ngFor="let url of results; let i = index"
-                class="img-preview"
-                [class.selected]="selectedUrl === url"
-                (click)="url && (selectedUrl = url)">
-                <img *ngIf="url" [src]="url" />
-                <div *ngIf="!url" class="img-fail">⚠</div>
-                <div *ngIf="url && selectedUrl === url" class="check">✓</div>
+              <div class="chips">
+                @for (c of quickPrompts; track c) {
+                  <div class="chip"
+                    [class.active]="imgPrompt === c.value"
+                  (click)="imgPrompt = c.value">{{ c.label }}</div>
+                }
               </div>
+              <!-- Loading placeholders -->
+              @if (loading) {
+                <div class="img-grid">
+                  @for (_ of [0,1,2]; track _) {
+                    <div class="img-loading">
+                      <div class="spinner"></div>
+                      <span>Generating…</span>
+                    </div>
+                  }
+                </div>
+              }
+              <!-- Results -->
+              @if (!loading && results.length) {
+                <div class="img-grid">
+                  @for (url of results; track url; let i = $index) {
+                    <div
+                      class="img-preview"
+                      [class.selected]="selectedUrl === url"
+                      (click)="url && (selectedUrl = url)">
+                      @if (url) {
+                        <img [src]="url" />
+                      }
+                      @if (!url) {
+                        <div class="img-fail">⚠</div>
+                      }
+                      @if (url && selectedUrl === url) {
+                        <div class="check">✓</div>
+                      }
+                    </div>
+                  }
+                </div>
+              }
+              @if (selectedUrl) {
+                <div class="sel-info">Image selected ✓ — click Insert below</div>
+              }
             </div>
-
-            <div *ngIf="selectedUrl" class="sel-info">Image selected ✓ — click Insert below</div>
+            <button class="insert-btn" [disabled]="!selectedUrl" (click)="insert()">
+              Insert Selected Image to Canvas
+            </button>
           </div>
-
-          <button class="insert-btn" [disabled]="!selectedUrl" (click)="insert()">
-            Insert Selected Image to Canvas
-          </button>
         </div>
       </div>
-    </div>
-  `,
+    }
+    `,
     styles: [`
     .overlay {
       position: fixed; inset: 0;

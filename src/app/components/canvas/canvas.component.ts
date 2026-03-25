@@ -16,101 +16,107 @@ interface PanRef { sx: number; sy: number; sl: number; st: number; }
     imports: [CommonModule, PropertiesPanelComponent],
     template: `
     <div #areaEl class="canvas-area"
-         [class.pan-ready]="spaceHeld && !panning"
-         [class.grabbing]="panning"
-         (mousedown)="onAreaMouseDown($event)"
-         (wheel)="onWheel($event)">
-
+      [class.pan-ready]="spaceHeld && !panning"
+      [class.grabbing]="panning"
+      (mousedown)="onAreaMouseDown($event)"
+      (wheel)="onWheel($event)">
+    
       <!-- Dot grid background -->
       <div class="dot-bg"></div>
-
+    
       <!-- Ruler hints (top + left) -->
       <div class="ruler ruler-h"></div>
       <div class="ruler ruler-v"></div>
-
+    
       <!-- Canvas wrapper (handles scroll centering) -->
       <div class="canvas-viewport">
         <div class="canvas-wrapper"
           [style.transform]="'scale(' + cs.zoom() + ')'"
           [style.width.px]="cs.canvasWidth()"
           [style.height.px]="cs.canvasHeight()"
-        >
+          >
           <!-- Design canvas -->
           <div #canvasEl class="design-canvas"
-               [style.width.px]="cs.canvasWidth()"
-               [style.height.px]="cs.canvasHeight()"
-               [style.background]="cs.canvasBg()"
-               (mousedown)="onCanvasClick($event)">
-
-            <ng-container *ngFor="let el of cs.elements(); trackBy: trackById">
-
+            [style.width.px]="cs.canvasWidth()"
+            [style.height.px]="cs.canvasHeight()"
+            [style.background]="cs.canvasBg()"
+            (mousedown)="onCanvasClick($event)">
+    
+            @for (el of cs.elements(); track trackById($index, el)) {
               <!-- RECT -->
-              <div *ngIf="el.type === 'rect'"
-                class="canvas-el"
-                [class.selected]="el.id === cs.selectedId()"
-                [style.left.px]="el.x"
-                [style.top.px]="el.y"
-                [style.width.px]="el.w"
-                [style.height.px]="asRect(el).h"
-                [style.border-radius.px]="asRect(el).radius"
-                [style.background]="asRect(el).bg"
-                [style.cursor]="el.locked ? 'default' : 'move'"
-                (mousedown)="onElDown($event, el)">
-                <ng-container *ngTemplateOutlet="handles; context:{el}"></ng-container>
-              </div>
-
-              <!-- TEXT -->
-              <div *ngIf="el.type === 'text'"
-                class="canvas-el text-el"
-                [class.selected]="el.id === cs.selectedId()"
-                [class.editing]="el.id === cs.editingId()"
-                [style.left.px]="el.x"
-                [style.top.px]="el.y"
-                [style.width.px]="el.w"
-                [style.font-size.px]="asText(el).fontSize"
-                [style.font-weight]="asText(el).fontWeight"
-                [style.color]="asText(el).color"
-                [style.font-family]="getFf(asText(el).fontFamily)"
-                [style.text-align]="asText(el).align"
-                [style.cursor]="el.locked ? 'default' : 'move'"
-                [contentEditable]="el.id === cs.editingId()"
-                (mousedown)="onElDown($event, el)"
-                (dblclick)="startEdit(el)"
-                (blur)="endEdit($event, el)">
-                {{ el.id !== cs.editingId() ? asText(el).text : null }}
-                <ng-container *ngTemplateOutlet="handles; context:{el}"></ng-container>
-              </div>
-
-              <!-- IMG -->
-              <div *ngIf="el.type === 'img'"
-                class="canvas-el img-el"
-                [class.selected]="el.id === cs.selectedId()"
-                [style.left.px]="el.x"
-                [style.top.px]="el.y"
-                [style.width.px]="el.w"
-                [style.height.px]="asImg(el).h"
-                [style.cursor]="el.locked ? 'default' : 'move'"
-                (mousedown)="onElDown($event, el)">
-                <img *ngIf="asImg(el).src" [src]="asImg(el).src" />
-                <div *ngIf="!asImg(el).src" class="img-placeholder" (click)="clickPlaceholder(el, $event)">
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
-                    <rect x="3" y="3" width="18" height="18" rx="2"/>
-                    <circle cx="8.5" cy="8.5" r="1.5"/>
-                    <path d="M21 15l-5-5L5 21"/>
-                  </svg>
-                  <span>Click to upload</span>
+              @if (el.type === 'rect') {
+                <div
+                  class="canvas-el"
+                  [class.selected]="el.id === cs.selectedId()"
+                  [style.left.px]="el.x"
+                  [style.top.px]="el.y"
+                  [style.width.px]="el.w"
+                  [style.height.px]="asRect(el).h"
+                  [style.border-radius.px]="asRect(el).radius"
+                  [style.background]="asRect(el).bg"
+                  [style.cursor]="el.locked ? 'default' : 'move'"
+                  (mousedown)="onElDown($event, el)">
+                  <ng-container *ngTemplateOutlet="handles; context:{el}"></ng-container>
                 </div>
-                <ng-container *ngTemplateOutlet="handles; context:{el}"></ng-container>
-              </div>
-
-            </ng-container>
+              }
+              <!-- TEXT -->
+              @if (el.type === 'text') {
+                <div
+                  class="canvas-el text-el"
+                  [class.selected]="el.id === cs.selectedId()"
+                  [class.editing]="el.id === cs.editingId()"
+                  [style.left.px]="el.x"
+                  [style.top.px]="el.y"
+                  [style.width.px]="el.w"
+                  [style.font-size.px]="asText(el).fontSize"
+                  [style.font-weight]="asText(el).fontWeight"
+                  [style.color]="asText(el).color"
+                  [style.font-family]="getFf(asText(el).fontFamily)"
+                  [style.text-align]="asText(el).align"
+                  [style.cursor]="el.locked ? 'default' : 'move'"
+                  [contentEditable]="el.id === cs.editingId()"
+                  (mousedown)="onElDown($event, el)"
+                  (dblclick)="startEdit(el)"
+                  (blur)="endEdit($event, el)">
+                  {{ el.id !== cs.editingId() ? asText(el).text : null }}
+                  <ng-container *ngTemplateOutlet="handles; context:{el}"></ng-container>
+                </div>
+              }
+              <!-- IMG -->
+              @if (el.type === 'img') {
+                <div
+                  class="canvas-el img-el"
+                  [class.selected]="el.id === cs.selectedId()"
+                  [style.left.px]="el.x"
+                  [style.top.px]="el.y"
+                  [style.width.px]="el.w"
+                  [style.height.px]="asImg(el).h"
+                  [style.cursor]="el.locked ? 'default' : 'move'"
+                  (mousedown)="onElDown($event, el)">
+                  @if (asImg(el).src) {
+                    <img [src]="asImg(el).src" />
+                  }
+                  @if (!asImg(el).src) {
+                    <div class="img-placeholder" (click)="clickPlaceholder(el, $event)">
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4">
+                        <rect x="3" y="3" width="18" height="18" rx="2"/>
+                        <circle cx="8.5" cy="8.5" r="1.5"/>
+                        <path d="M21 15l-5-5L5 21"/>
+                      </svg>
+                      <span>Click to upload</span>
+                    </div>
+                  }
+                  <ng-container *ngTemplateOutlet="handles; context:{el}"></ng-container>
+                </div>
+              }
+            }
           </div>
         </div>
-
+    
         <!-- Page label under canvas -->
         <div class="page-label">Page 1 of 1</div>
       </div>
-
+    
       <!-- Top-right floating: canvas size info + layer controls -->
       <div class="canvas-topbar">
         <div class="canvas-info">
@@ -133,34 +139,36 @@ interface PanRef { sx: number; sy: number; sl: number; st: number; }
             </svg>
           </button>
         </div>
-
+    
         <!-- Layer controls (when element selected) -->
-        <div class="layer-ctrls" *ngIf="cs.selectedId()">
-          <button class="ctrl-btn" title="Move up" (click)="cs.moveLayer(cs.selectedId()!, 1)">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
-          </button>
-          <button class="ctrl-btn" title="Move down" (click)="cs.moveLayer(cs.selectedId()!, -1)">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
-          </button>
-          <button class="ctrl-btn" title="Duplicate" (click)="cs.duplicateElement(cs.selectedId()!)">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-            </svg>
-          </button>
-          <button class="ctrl-btn delete" title="Delete (Del)" (click)="cs.deleteElement(cs.selectedId()!)">
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-              <path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-            </svg>
-          </button>
-        </div>
+        @if (cs.selectedId()) {
+          <div class="layer-ctrls">
+            <button class="ctrl-btn" title="Move up" (click)="cs.moveLayer(cs.selectedId()!, 1)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+            </button>
+            <button class="ctrl-btn" title="Move down" (click)="cs.moveLayer(cs.selectedId()!, -1)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
+            </button>
+            <button class="ctrl-btn" title="Duplicate" (click)="cs.duplicateElement(cs.selectedId()!)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            </button>
+            <button class="ctrl-btn delete" title="Delete (Del)" (click)="cs.deleteElement(cs.selectedId()!)">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                <path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+              </svg>
+            </button>
+          </div>
+        }
       </div>
-
+    
       <!-- Right-side Properties Panel — always visible -->
       <div class="right-panel-wrap">
         <app-properties-panel (openImgModal)="onOpenImgModal($event)" />
       </div>
-
+    
       <!-- Bottom center: + Add page -->
       <div class="bottom-bar">
         <div class="page-dots">
@@ -173,25 +181,27 @@ interface PanRef { sx: number; sy: number; sl: number; st: number; }
           Add page
         </button>
       </div>
-
+    
       <!-- Hidden file input -->
       <input #fileInput type="file" accept="image/*" style="display:none" (change)="onPlaceholderFile($event)" />
     </div>
-
+    
     <!-- HANDLES TEMPLATE -->
     <ng-template #handles let-el="el">
-      <div *ngIf="el.id === cs.selectedId()" class="handles">
-        <div class="rh nw" (mousedown)="onRszDown($event, el, 'nw')"></div>
-        <div class="rh n"  (mousedown)="onRszDown($event, el, 'n')"></div>
-        <div class="rh ne" (mousedown)="onRszDown($event, el, 'ne')"></div>
-        <div class="rh e"  (mousedown)="onRszDown($event, el, 'e')"></div>
-        <div class="rh se" (mousedown)="onRszDown($event, el, 'se')"></div>
-        <div class="rh s"  (mousedown)="onRszDown($event, el, 's')"></div>
-        <div class="rh sw" (mousedown)="onRszDown($event, el, 'sw')"></div>
-        <div class="rh w"  (mousedown)="onRszDown($event, el, 'w')"></div>
-      </div>
+      @if (el.id === cs.selectedId()) {
+        <div class="handles">
+          <div class="rh nw" (mousedown)="onRszDown($event, el, 'nw')"></div>
+          <div class="rh n"  (mousedown)="onRszDown($event, el, 'n')"></div>
+          <div class="rh ne" (mousedown)="onRszDown($event, el, 'ne')"></div>
+          <div class="rh e"  (mousedown)="onRszDown($event, el, 'e')"></div>
+          <div class="rh se" (mousedown)="onRszDown($event, el, 'se')"></div>
+          <div class="rh s"  (mousedown)="onRszDown($event, el, 's')"></div>
+          <div class="rh sw" (mousedown)="onRszDown($event, el, 'sw')"></div>
+          <div class="rh w"  (mousedown)="onRszDown($event, el, 'w')"></div>
+        </div>
+      }
     </ng-template>
-  `,
+    `,
     styles: [`
     :host { display: flex; flex: 1; overflow: hidden; }
 

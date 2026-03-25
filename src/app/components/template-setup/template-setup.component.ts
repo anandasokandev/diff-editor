@@ -1,5 +1,5 @@
 import { Component, Output, EventEmitter } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 
 export interface TemplateConfig {
@@ -19,7 +19,7 @@ interface SizePreset {
 
 @Component({
     selector: 'app-template-setup',
-    imports: [CommonModule, FormsModule],
+    imports: [FormsModule],
     template: `
     <div class="overlay" (click)="onOverlayClick($event)">
       <div class="modal">
@@ -32,7 +32,7 @@ interface SizePreset {
           <h1 class="modal-title">Create a new design</h1>
           <p class="modal-sub">Choose a template size or set custom dimensions to get started.</p>
         </div>
-
+    
         <!-- Search-like template name -->
         <div class="name-row">
           <label class="field-label">Design Name</label>
@@ -41,79 +41,80 @@ interface SizePreset {
             [(ngModel)]="config.name"
             placeholder="My New Design"
             maxlength="60"
-          />
-        </div>
-
-        <!-- Quick size presets -->
-        <div class="section-title">Quick Sizes</div>
-        <div class="presets-grid">
-          <div
-            class="size-card"
-            *ngFor="let p of sizePresets"
-            [class.active]="selectedPreset === p.label"
-            (click)="selectPreset(p)"
-          >
-            <div class="size-icon">{{ p.icon }}</div>
-            <div class="size-details">
-              <div class="size-label">{{ p.label }}</div>
-              <div class="size-dims">{{ p.w }} × {{ p.h }}px</div>
-              <div class="size-sub">{{ p.sub }}</div>
+            />
+          </div>
+    
+          <!-- Quick size presets -->
+          <div class="section-title">Quick Sizes</div>
+          <div class="presets-grid">
+            @for (p of sizePresets; track p) {
+              <div
+                class="size-card"
+                [class.active]="selectedPreset === p.label"
+                (click)="selectPreset(p)"
+                >
+                <div class="size-icon">{{ p.icon }}</div>
+                <div class="size-details">
+                  <div class="size-label">{{ p.label }}</div>
+                  <div class="size-dims">{{ p.w }} × {{ p.h }}px</div>
+                  <div class="size-sub">{{ p.sub }}</div>
+                </div>
+              </div>
+            }
+          </div>
+    
+          <!-- Custom dimensions -->
+          <div class="section-title">Custom Size</div>
+          <div class="dim-row">
+            <div class="dim-field">
+              <label class="field-label">Width (px)</label>
+              <div class="dim-input-wrap">
+                <input
+                  type="number"
+                  class="dim-input"
+                  [(ngModel)]="config.width"
+                  min="100" max="5000"
+                  (input)="selectedPreset = ''"
+                  />
+                  <span class="dim-unit">px</span>
+                </div>
+              </div>
+              <div class="dim-sep">×</div>
+              <div class="dim-field">
+                <label class="field-label">Height (px)</label>
+                <div class="dim-input-wrap">
+                  <input
+                    type="number"
+                    class="dim-input"
+                    [(ngModel)]="config.height"
+                    min="100" max="5000"
+                    (input)="selectedPreset = ''"
+                    />
+                    <span class="dim-unit">px</span>
+                  </div>
+                </div>
+                <div class="dim-preview" [style.aspect-ratio]="config.width + '/' + config.height">
+                  <div class="dim-preview-inner">
+                    <span>{{ config.width }}×{{ config.height }}</span>
+                  </div>
+                </div>
+              </div>
+    
+              <!-- Footer -->
+              <div class="modal-footer">
+                <div class="footer-info">
+                  <span class="info-chip">{{ config.width }} × {{ config.height }} px</span>
+                </div>
+                <button class="create-btn" (click)="onCreate()" [disabled]="!config.name.trim()">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M12 5v14M5 12h14"/>
+                  </svg>
+                  Create Design
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-
-        <!-- Custom dimensions -->
-        <div class="section-title">Custom Size</div>
-        <div class="dim-row">
-          <div class="dim-field">
-            <label class="field-label">Width (px)</label>
-            <div class="dim-input-wrap">
-              <input
-                type="number"
-                class="dim-input"
-                [(ngModel)]="config.width"
-                min="100" max="5000"
-                (input)="selectedPreset = ''"
-              />
-              <span class="dim-unit">px</span>
-            </div>
-          </div>
-          <div class="dim-sep">×</div>
-          <div class="dim-field">
-            <label class="field-label">Height (px)</label>
-            <div class="dim-input-wrap">
-              <input
-                type="number"
-                class="dim-input"
-                [(ngModel)]="config.height"
-                min="100" max="5000"
-                (input)="selectedPreset = ''"
-              />
-              <span class="dim-unit">px</span>
-            </div>
-          </div>
-          <div class="dim-preview" [style.aspect-ratio]="config.width + '/' + config.height">
-            <div class="dim-preview-inner">
-              <span>{{ config.width }}×{{ config.height }}</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Footer -->
-        <div class="modal-footer">
-          <div class="footer-info">
-            <span class="info-chip">{{ config.width }} × {{ config.height }} px</span>
-          </div>
-          <button class="create-btn" (click)="onCreate()" [disabled]="!config.name.trim()">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-              <path d="M12 5v14M5 12h14"/>
-            </svg>
-            Create Design
-          </button>
-        </div>
-      </div>
-    </div>
-  `,
+    `,
     styles: [`
     .overlay {
       position: fixed; inset: 0;

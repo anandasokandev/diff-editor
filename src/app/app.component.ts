@@ -1,5 +1,5 @@
 import { Component } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { TopbarComponent } from './components/topbar/topbar.component';
 import { SidebarComponent } from './components/sidebar/sidebar.component';
 import { CanvasComponent } from './components/canvas/canvas.component';
@@ -11,48 +11,48 @@ import { CanvasService } from './services/canvas.service';
 @Component({
     selector: 'app-root',
     imports: [
-        CommonModule,
-        TopbarComponent,
-        SidebarComponent,
-        CanvasComponent,
-        AiModalComponent,
-        ImgModalComponent,
-        TemplateSetupComponent,
-    ],
+    TopbarComponent,
+    SidebarComponent,
+    CanvasComponent,
+    AiModalComponent,
+    ImgModalComponent,
+    TemplateSetupComponent
+],
     template: `
     <!-- Template Setup (shown first) -->
-    <app-template-setup
-      *ngIf="cs.showSetup()"
-      (created)="onTemplateCreated($event)"
-    />
-
-    <!-- Main Editor Shell -->
-    <div class="app-shell" *ngIf="!cs.showSetup()">
-      <app-topbar
-        (openAiModal)="showAiModal = true"
-        (openImgModal)="openImgModalForNew()"
-        (newDesign)="cs.showSetup.set(true)"
-      />
-      <div class="workspace">
-        <app-sidebar
-          (openAiModal)="showAiModal = true"
-          (openImgModal)="openImgModalForNew()" 
+    @if (cs.showSetup()) {
+      <app-template-setup
+        (created)="onTemplateCreated($event)"
         />
-        <app-canvas />
+    }
+    
+    <!-- Main Editor Shell -->
+    @if (!cs.showSetup()) {
+      <div class="app-shell">
+        <app-topbar
+          (openAiModal)="showAiModal = true"
+          (openImgModal)="openImgModalForNew()"
+          (newDesign)="cs.showSetup.set(true)"
+          />
+        <div class="workspace">
+          <app-sidebar
+            (openAiModal)="showAiModal = true"
+            (openImgModal)="openImgModalForNew()"
+            />
+          <app-canvas />
+        </div>
+        <app-ai-modal
+          [visible]="showAiModal"
+          (close)="showAiModal = false"
+          />
+        <app-img-modal
+          [visible]="showImgModal"
+          [targetId]="imgModalTargetId"
+          (close)="showImgModal = false"
+          />
       </div>
-
-      <app-ai-modal
-        [visible]="showAiModal"
-        (close)="showAiModal = false"
-      />
-
-      <app-img-modal
-        [visible]="showImgModal"
-        [targetId]="imgModalTargetId"
-        (close)="showImgModal = false"
-      />
-    </div>
-  `,
+    }
+    `,
     styles: [`
     .app-shell {
       display: flex;

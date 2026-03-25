@@ -1,5 +1,5 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { FormsModule } from '@angular/forms';
 import { CanvasService } from '../../services/canvas.service';
 import { AiService } from '../../services/ai.service';
@@ -9,66 +9,69 @@ interface GenState { loading: boolean; progress: number; status: string; }
 
 @Component({
     selector: 'app-ai-modal',
-    imports: [CommonModule, FormsModule],
+    imports: [FormsModule],
     template: `
-    <div class="overlay" *ngIf="visible" (click)="onOverlayClick($event)">
-      <div class="modal">
-
-        <div class="modal-head">
-          <div>
-            <div class="modal-title">✦ AI Template Generator</div>
-            <div class="modal-sub">Generating for <strong>{{ cs.canvasWidth() }}×{{ cs.canvasHeight() }}px</strong> canvas · AI builds layout + images</div>
-          </div>
-          <button class="close-btn" (click)="close.emit()">✕</button>
-        </div>
-
-        <div class="modal-body">
-          <div class="ai-badge">✦ Powered by Gemini + Pollinations AI</div>
-
-          <div class="sec-label">Describe Your Design</div>
-          <textarea
-            class="prompt-area"
-            [(ngModel)]="aiPrompt"
-            placeholder="e.g. A bold coffee shop launch post with dark moody vibes, strong typography, and a CTA button…"
-          ></textarea>
-
-          <div class="sec-label">Quick Prompts</div>
-          <div class="chips">
-            <div *ngFor="let c of quickPrompts" class="chip"
-              [class.active]="aiPrompt === c.value"
-              (click)="aiPrompt = c.value">
-              {{ c.label }}
+    @if (visible) {
+      <div class="overlay" (click)="onOverlayClick($event)">
+        <div class="modal">
+          <div class="modal-head">
+            <div>
+              <div class="modal-title">✦ AI Template Generator</div>
+              <div class="modal-sub">Generating for <strong>{{ cs.canvasWidth() }}×{{ cs.canvasHeight() }}px</strong> canvas · AI builds layout + images</div>
             </div>
+            <button class="close-btn" (click)="close.emit()">✕</button>
           </div>
-
-          <div class="sec-label">Visual Style</div>
-          <div class="style-grid">
-            <div *ngFor="let s of styles" class="style-card"
-              [class.active]="aiStyle === s.value"
-              (click)="aiStyle = s.value">
-              <div class="sc-icon">{{ s.icon }}</div>
-              <div class="sc-name">{{ s.label }}</div>
-              <div class="sc-sub">{{ s.sub }}</div>
+          <div class="modal-body">
+            <div class="ai-badge">✦ Powered by Gemini + Pollinations AI</div>
+            <div class="sec-label">Describe Your Design</div>
+            <textarea
+              class="prompt-area"
+              [(ngModel)]="aiPrompt"
+              placeholder="e.g. A bold coffee shop launch post with dark moody vibes, strong typography, and a CTA button…"
+            ></textarea>
+            <div class="sec-label">Quick Prompts</div>
+            <div class="chips">
+              @for (c of quickPrompts; track c) {
+                <div class="chip"
+                  [class.active]="aiPrompt === c.value"
+                  (click)="aiPrompt = c.value">
+                  {{ c.label }}
+                </div>
+              }
             </div>
-          </div>
-
-          <!-- Progress -->
-          <div *ngIf="state.loading" class="progress-wrap">
-            <div class="progress-bar">
-              <div class="progress-fill" [style.width.%]="state.progress"></div>
+            <div class="sec-label">Visual Style</div>
+            <div class="style-grid">
+              @for (s of styles; track s) {
+                <div class="style-card"
+                  [class.active]="aiStyle === s.value"
+                  (click)="aiStyle = s.value">
+                  <div class="sc-icon">{{ s.icon }}</div>
+                  <div class="sc-name">{{ s.label }}</div>
+                  <div class="sc-sub">{{ s.sub }}</div>
+                </div>
+              }
             </div>
-            <div class="status-text">{{ state.status }}</div>
+            <!-- Progress -->
+            @if (state.loading) {
+              <div class="progress-wrap">
+                <div class="progress-bar">
+                  <div class="progress-fill" [style.width.%]="state.progress"></div>
+                </div>
+                <div class="status-text">{{ state.status }}</div>
+              </div>
+            }
+            @if (!state.loading && state.status) {
+              <div class="error-text">{{ state.status }}</div>
+            }
+            <button class="gen-btn" [disabled]="state.loading" (click)="generate()">
+              <span class="shimmer"></span>
+              {{ state.loading ? 'Generating…' : '✦ Generate Design' }}
+            </button>
           </div>
-          <div *ngIf="!state.loading && state.status" class="error-text">{{ state.status }}</div>
-
-          <button class="gen-btn" [disabled]="state.loading" (click)="generate()">
-            <span class="shimmer"></span>
-            {{ state.loading ? 'Generating…' : '✦ Generate Design' }}
-          </button>
         </div>
       </div>
-    </div>
-  `,
+    }
+    `,
     styles: [`
     .overlay {
       position: fixed; inset: 0;

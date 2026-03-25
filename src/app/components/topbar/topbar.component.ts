@@ -1,11 +1,11 @@
 import { Component, Output, EventEmitter } from '@angular/core';
-import { CommonModule } from '@angular/common';
+
 import { CanvasService } from '../../services/canvas.service';
 import { DownloadService } from '../../services/download.service';
 
 @Component({
     selector: 'app-topbar',
-    imports: [CommonModule],
+    imports: [],
     template: `
     <header class="topbar">
       <!-- Left: Logo + New Design -->
@@ -20,14 +20,14 @@ import { DownloadService } from '../../services/download.service';
           </svg>
           New
         </button>
-
+    
         <div class="divider"></div>
-
+    
         <!-- Template name -->
         <span class="template-name">{{ cs.templateName() }}</span>
         <span class="canvas-dims">{{ cs.canvasWidth() }} × {{ cs.canvasHeight() }}</span>
       </div>
-
+    
       <!-- Center: Undo/Redo + zoom -->
       <div class="center-area">
         <div class="toolbar-group">
@@ -44,9 +44,9 @@ import { DownloadService } from '../../services/download.service';
             </svg>
           </button>
         </div>
-
+    
         <div class="divider"></div>
-
+    
         <!-- Zoom -->
         <div class="zoom-cluster">
           <button class="tb-btn" (click)="cs.zoomOut()" title="Zoom out">
@@ -62,7 +62,7 @@ import { DownloadService } from '../../services/download.service';
           </button>
         </div>
       </div>
-
+    
       <!-- Right: Actions -->
       <div class="right-area">
         <button class="btn ghost" (click)="openAiModal.emit()">
@@ -71,7 +71,7 @@ import { DownloadService } from '../../services/download.service';
           </svg>
           AI Generate
         </button>
-
+    
         <button class="btn ghost" (click)="openImgModal.emit()">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
             <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
@@ -79,27 +79,31 @@ import { DownloadService } from '../../services/download.service';
           </svg>
           Image
         </button>
-
+    
         <div class="divider"></div>
-
+    
         <button class="btn download"
           [class.loading]="downloading"
           (click)="download()"
           [disabled]="downloading">
-          <span class="spinner" *ngIf="downloading"></span>
-          <svg *ngIf="!downloading" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/>
-            <line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
+          @if (downloading) {
+            <span class="spinner"></span>
+          }
+          @if (!downloading) {
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+          }
           {{ downloading ? 'Exporting…' : 'Download PNG' }}
         </button>
-
+    
         <input #fileInput type="file" accept="image/*" style="display:none"
-               (change)="onFileChange($event)" />
+          (change)="onFileChange($event)" />
       </div>
     </header>
-  `,
+    `,
     styles: [`
     .topbar {
       height: 52px;
