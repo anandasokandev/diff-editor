@@ -1,0 +1,207 @@
+@if (!sel) {
+      <aside class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Canvas Background</span>
+        </div>
+        <div class="panel-body">
+          <div class="sec-label">Solid Color</div>
+          <label class="color-row">
+            <div class="color-preview" [style.background]="solidColorValue" title="Click to pick color"></div>
+            <input type="color" class="color-native" [value]="solidColorValue"
+              (input)="onSolidColorChange($any($event.target).value)" />
+            <span class="color-hex">{{ solidColorValue }}</span>
+            <span class="color-edit-hint">click to change</span>
+          </label>
+          <div class="sec-label">Quick Colors</div>
+          <div class="quick-colors">
+            @for (c of quickColors; track c) {
+              <div class="q-chip"
+                [style.background]="c"
+                [class.active]="cs.canvasBg() === c"
+                (click)="cs.setCanvasBg(c)"
+                [title]="c">
+              </div>
+            }
+          </div>
+          <div class="sec-label">Gradient Presets</div>
+          <div class="gradient-grid">
+            @for (g of gradientPresets; track g) {
+              <div class="grad-card"
+                [style.background]="g.value"
+                [class.active]="cs.canvasBg() === g.value"
+                (click)="cs.setCanvasBg(g.value)"
+                [title]="g.label">
+                <span class="grad-label">{{ g.label }}</span>
+              </div>
+            }
+          </div>
+          <div class="sec-label">Custom Gradient</div>
+          <div class="field-full">
+            <input class="text-inp" placeholder="e.g. linear-gradient(135deg,#667eea,#764ba2)"
+              [ngModel]="cs.canvasBg()"
+              (ngModelChange)="cs.setCanvasBg($event)" />
+          </div>
+          <div class="sec-label" style="margin-top:18px">Actions</div>
+          <button class="action-full" (click)="cs.setCanvasBg('#ffffff')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+            </svg>
+            Reset to White
+          </button>
+        </div>
+      </aside>
+    }
+    
+    <!-- ═══════════════════ ELEMENT PROPERTIES (element selected) ═══════════════════ -->
+    @if (sel) {
+      <aside class="panel">
+        <div class="panel-header">
+          <span class="panel-title">{{ headerTitle }}</span>
+          <button class="close-btn" (click)="cs.selectedId.set(null)" title="Close">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <div class="panel-body">
+          <!-- Position & Size -->
+          <div class="sec-label">Position & Size</div>
+          <div class="row">
+            <div class="field">
+              <span class="lbl">X</span>
+              <input type="number" class="inp" [ngModel]="Math.round(sel.x)" (ngModelChange)="cs.updateElement(sel!.id, {x:+$event})">
+            </div>
+            <div class="field">
+              <span class="lbl">Y</span>
+              <input type="number" class="inp" [ngModel]="Math.round(sel.y)" (ngModelChange)="cs.updateElement(sel!.id, {y:+$event})">
+            </div>
+          </div>
+          <div class="row">
+            <div class="field">
+              <span class="lbl">W</span>
+              <input type="number" class="inp" [ngModel]="Math.round(sel.w)" (ngModelChange)="cs.updateElement(sel!.id, {w:+$event})">
+            </div>
+            <div class="field">
+              <span class="lbl">H</span>
+              <input type="number" class="inp" [ngModel]="Math.round(getH())" (ngModelChange)="cs.updateElement(sel!.id, {h:+$event})">
+            </div>
+          </div>
+          <!-- TEXT PROPERTIES -->
+          @if (sel.type === 'text') {
+            <div class="sec-label">Typography</div>
+            <div class="row">
+              <div class="field">
+                <span class="lbl">Size</span>
+                <input type="number" class="inp" [ngModel]="asText.fontSize" (ngModelChange)="cs.updateElement(sel!.id, {fontSize:+$event})">
+              </div>
+              <div class="field">
+                <span class="lbl">Color</span>
+                <input type="color" class="inp color-inp" [ngModel]="asText.color" (ngModelChange)="cs.updateElement(sel!.id, {color:$event})">
+              </div>
+            </div>
+            <div class="field-full">
+              <span class="lbl">Weight</span>
+              <select class="inp sel-inp" [ngModel]="asText.fontWeight" (ngModelChange)="cs.updateElement(sel!.id, {fontWeight:+$event})">
+                <option value="300">Light (300)</option>
+                <option value="400">Regular (400)</option>
+                <option value="600">SemiBold (600)</option>
+                <option value="700">Bold (700)</option>
+                <option value="800">ExtraBold (800)</option>
+              </select>
+            </div>
+            <div class="field-full">
+              <span class="lbl">Font</span>
+              <select class="inp sel-inp" [ngModel]="asText.fontFamily" (ngModelChange)="cs.updateElement(sel!.id, {fontFamily:$event})">
+                <option value="Syne">Syne</option>
+                <option value="DM Sans">DM Sans</option>
+                <option value="Georgia">Georgia</option>
+                <option value="Courier">Courier New</option>
+              </select>
+            </div>
+            <div class="sec-label">Alignment</div>
+            <div class="btn-row">
+              <button class="align-btn" [class.active]="asText.align==='left'"   (click)="cs.updateElement(sel!.id, {align:'left'})">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="15" y2="12"/><line x1="3" y1="18" x2="18" y2="18"/>
+                </svg>
+              </button>
+              <button class="align-btn" [class.active]="asText.align==='center'" (click)="cs.updateElement(sel!.id, {align:'center'})">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="3" y1="6" x2="21" y2="6"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="5" y1="18" x2="19" y2="18"/>
+                </svg>
+              </button>
+              <button class="align-btn" [class.active]="asText.align==='right'"  (click)="cs.updateElement(sel!.id, {align:'right'})">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="3" y1="6" x2="21" y2="6"/><line x1="9" y1="12" x2="21" y2="12"/><line x1="6" y1="18" x2="21" y2="18"/>
+                </svg>
+              </button>
+            </div>
+          }
+          <!-- RECT PROPERTIES -->
+          @if (sel.type === 'rect') {
+            <div class="sec-label">Fill</div>
+            <div class="row">
+              <div class="field">
+                <span class="lbl">Color</span>
+                <input type="color" class="inp color-inp" [ngModel]="rectBgForInput" (ngModelChange)="cs.updateElement(sel!.id, {bg:$event})">
+              </div>
+            </div>
+            <div class="field-full">
+              <span class="lbl">Corner Radius</span>
+              <div class="range-wrap">
+                <input type="range" min="0" max="200" class="range-inp" [ngModel]="asRect.radius" (ngModelChange)="cs.updateElement(sel!.id, {radius:+$event})">
+                <span class="range-val">{{ asRect.radius }}px</span>
+              </div>
+            </div>
+            <div class="field-full">
+              <span class="lbl">Opacity</span>
+              <div class="range-wrap">
+                <input type="range" min="0" max="1" step="0.01" class="range-inp" [ngModel]="getOpacity()" (ngModelChange)="setOpacity($event)">
+                <span class="range-val">{{ Math.round(getOpacity()*100) }}%</span>
+              </div>
+            </div>
+          }
+          <!-- IMG PROPERTIES -->
+          @if (sel.type === 'img') {
+            <div class="sec-label">Image</div>
+            <button class="action-full" (click)="triggerReplace()">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+              </svg>
+              Replace Image
+            </button>
+            <button class="action-full ai" style="margin-top:6px" (click)="openImgModal.emit(sel!.id)">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
+              </svg>
+              AI Replace
+            </button>
+            <input #replaceFile type="file" accept="image/*" style="display:none" (change)="onReplaceFile($event)">
+          }
+          <!-- ACTIONS -->
+          <div class="sec-label">Actions</div>
+          <div class="btn-row actions-row">
+            <button class="icon-btn" (click)="cs.duplicateElement(sel!.id)" title="Duplicate">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+              Duplicate
+            </button>
+            <button class="icon-btn" (click)="cs.updateElement(sel!.id, {locked: !sel!.locked})" title="Lock/Unlock">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M19 11H5v11h14V11z M8 11V7a4 4 0 0 1 8 0v4"/>
+              </svg>
+              {{ sel!.locked ? 'Unlock' : 'Lock' }}
+            </button>
+          </div>
+          <button class="delete-btn" (click)="cs.deleteElement(sel!.id)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"/>
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+            </svg>
+            Delete Element
+          </button>
+        </div>
+      </aside>
+    }

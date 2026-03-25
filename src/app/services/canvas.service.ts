@@ -7,6 +7,8 @@ import {
 
 @Injectable({ providedIn: 'root' })
 export class CanvasService {
+  private readonly STORAGE_KEY = 'tempeditor-canvas-state';
+
   // ── State signals
   elements = signal<CanvasElement[]>([]);
   selectedId = signal<string | null>(null);
@@ -29,7 +31,66 @@ export class CanvasService {
     this.elements().find(e => e.id === this.selectedId()) ?? null
   );
 
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient) {
+    // Load saved state on app startup
+    const saved = this.loadCanvasState();
+    if (saved) {
+      this.applyCanvasState(saved);
+    }
+  }
+
+  private getCanvasState() {
+    return {
+      elements: this.elements(),
+      canvasWidth: this.canvasWidth(),
+      canvasHeight: this.canvasHeight(),
+      templateName: this.templateName(),
+      canvasBg: this.canvasBg(),
+      zoom: this.zoom(),
+      showSetup: this.showSetup(),
+    };
+  }
+
+  private saveCanvasState() {
+    try {
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.getCanvasState()));
+    } catch (err) {
+      console.warn('Could not save canvas state to localStorage', err);
+    }
+  }
+
+  private loadCanvasState() {
+    try {
+      const raw = localStorage.getItem(this.STORAGE_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch (err) {
+      console.warn('Could not load saved canvas state', err);
+      return null;
+    }
+  }
+
+  clearCanvasState() {
+    try {
+      localStorage.removeItem(this.STORAGE_KEY);
+    } catch (err) {
+      console.warn('Could not clear saved canvas state', err);
+    }
+  }
+
+  private applyCanvasState(state: any) {
+    if (!state) return;
+    this.canvasWidth.set(state.canvasWidth ?? 1080);
+    this.canvasHeight.set(state.canvasHeight ?? 1080);
+    this.templateName.set(state.templateName ?? 'Untitled Design');
+    this.canvasBg.set(state.canvasBg ?? '#ffffff');
+    this.zoom.set(typeof state.zoom === 'number' ? state.zoom : 0.75);
+    this.showSetup.set(state.showSetup ?? false);
+    if (Array.isArray(state.elements)) {
+      this.elements.set(state.elements);
+    }
+    this.selectedId.set(null);
+    this.editingId.set(null);
+  }
 
   // ── Initialize with template config
   initTemplate(name: string, w: number, h: number) {
@@ -42,15 +103,27 @@ export class CanvasService {
     this.editingId.set(null);
     this.showSetup.set(false);
     this.fitZoom(w, h);
+    this.saveCanvasState();
   }
 
-  setCanvasBg(bg: string) { this.canvasBg.set(bg); }
+  setCanvasBg(bg: string) {
+    this.canvasBg.set(bg);
+    this.saveCanvasState();
+  }
+
+  setElements(els: CanvasElement[]) {
+    this.elements.set(els);
+    this.selectedId.set(null);
+    this.editingId.set(null);
+    this.saveCanvasState();
+  }
 
   fitZoom(w: number, h: number) {
     const availW = window.innerWidth * 0.68;
     const availH = window.innerHeight * 0.80;
     const z = Math.min(availW / w, availH / h, 1.5);
     this.zoom.set(Math.max(0.1, parseFloat(z.toFixed(2))));
+    this.saveCanvasState();
   }
 
   // ── Preset loading
@@ -80,9 +153,7 @@ export class CanvasService {
     ) as any;
     if (bgSpec?.bg) this.canvasBg.set(bgSpec.bg);
 
-    this.elements.set(els);
-    this.selectedId.set(null);
-    this.editingId.set(null);
+    this.setElements(els);
   }
 
   // ── Element CRUD
@@ -91,6 +162,7 @@ export class CanvasService {
     if (!el) return null;
     this.elements.update(els => [...els, el]);
     this.selectedId.set(el.id);
+    this.saveCanvasState();
     return el;
   }
 
@@ -98,11 +170,13 @@ export class CanvasService {
     this.elements.update(els =>
       els.map(e => e.id === id ? { ...e, ...patch } as CanvasElement : e)
     );
+    this.saveCanvasState();
   }
 
   deleteElement(id: string) {
     this.elements.update(els => els.filter(e => e.id !== id));
     if (this.selectedId() === id) this.selectedId.set(null);
+    this.saveCanvasState();
   }
 
   duplicateElement(id: string) {
@@ -111,6 +185,7 @@ export class CanvasService {
     const copy: CanvasElement = { ...src, id: uid(), x: src.x + 20, y: src.y + 20 } as CanvasElement;
     this.elements.update(els => [...els, copy]);
     this.selectedId.set(copy.id);
+    this.saveCanvasState();
   }
 
   moveLayer(id: string, dir: 1 | -1) {
@@ -122,6 +197,7 @@ export class CanvasService {
       [arr[i], arr[j]] = [arr[j], arr[i]];
       return arr;
     });
+    this.saveCanvasState();
   }
 
   setImageSrc(id: string, src: string) {
@@ -131,10 +207,12 @@ export class CanvasService {
   clearCanvas() {
     this.elements.set([]);
     this.selectedId.set(null);
+    this.editingId.set(null);
+    this.saveCanvasState();
   }
 
   // ── Zoom helpers
-  zoomIn() { this.zoom.update(z => Math.min(3, parseFloat((z + 0.1).toFixed(2)))); }
-  zoomOut() { this.zoom.update(z => Math.max(0.1, parseFloat((z - 0.1).toFixed(2)))); }
+  zoomIn() { this.zoom.update(z => Math.min(3, parseFloat((z + 0.1).toFixed(2)))); this.saveCanvasState(); }
+  zoomOut() { this.zoom.update(z => Math.max(0.1, parseFloat((z - 0.1).toFixed(2)))); this.saveCanvasState(); }
   zoomReset() { this.fitZoom(this.canvasWidth(), this.canvasHeight()); }
 }

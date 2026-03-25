@@ -1,0 +1,357 @@
+:host {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.canvas-area {
+  flex: 1;
+  background: #0e0e14;
+  /* Use overflow scroll so we have real scroll room for panning */
+  overflow: auto;
+  position: relative;
+  /* hide scrollbars visually — panning is the scroll mechanism */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  &.pan-ready {
+    cursor: grab !important;
+  }
+  &.pan-ready * {
+    cursor: grab !important;
+    pointer-events: none;
+  }
+  &.grabbing {
+    cursor: grabbing !important;
+  }
+  &.grabbing * {
+    cursor: grabbing !important;
+    pointer-events: none;
+  }
+}
+
+.dot-bg {
+  position: fixed;
+  inset: 0;
+  background-image: radial-gradient(circle, #1e1e2e 1.5px, transparent 1.5px);
+  background-size: 24px 24px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Rulers */
+.ruler {
+  position: fixed;
+  background: #13131a;
+  z-index: 10;
+  pointer-events: none;
+}
+.ruler-h {
+  top: 52px;
+  left: 68px;
+  right: 0;
+  height: 18px;
+  border-bottom: 1px solid #252535;
+}
+.ruler-v {
+  top: 70px;
+  left: 68px;
+  bottom: 40px;
+  width: 18px;
+  border-right: 1px solid #252535;
+}
+
+/* Viewport / wrapper — large padding creates scroll room for pan in every direction */
+.canvas-viewport {
+  display: inline-flex; /* shrink-wraps content so padding creates actual overflow */
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  z-index: 1;
+  /* 600px pad gives plenty of pan space in every direction */
+  padding: 600px 800px;
+}
+
+.canvas-wrapper {
+  transform-origin: center center;
+  flex-shrink: 0;
+}
+
+.design-canvas {
+  /* background is set dynamically via [style.background]="cs.canvasBg()" */
+  box-shadow:
+    0 8px 60px rgba(0, 0, 0, 0.6),
+    0 2px 8px rgba(0, 0, 0, 0.4);
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+}
+
+.page-label {
+  font-size: 11px;
+  color: #3e3e5a;
+  font-family: "Syne", sans-serif;
+  letter-spacing: 0.04em;
+}
+
+/* Canvas top-bar overlay */
+.canvas-topbar {
+  position: fixed;
+  top: 70px;
+  right: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 50;
+}
+.canvas-info {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 5px 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.canvas-size-badge {
+  font-size: 10px;
+  color: var(--muted);
+  font-family: "Syne", sans-serif;
+  margin-right: 4px;
+  white-space: nowrap;
+}
+.sep {
+  width: 1px;
+  height: 16px;
+  background: var(--border);
+  margin: 0 2px;
+}
+
+.layer-ctrls {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 5px 8px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  animation: popIn 0.12s ease;
+}
+@keyframes popIn {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.ctrl-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.12s;
+  &:hover {
+    background: var(--panel);
+    color: var(--text);
+  }
+  &.delete:hover {
+    background: rgba(252, 92, 125, 0.15);
+    color: #fc5c7d;
+  }
+}
+.zoom-val {
+  font-size: 10.5px;
+  color: var(--text);
+  font-family: "Syne", sans-serif;
+  min-width: 34px;
+  text-align: center;
+}
+
+/* Right panel float */
+.right-panel-wrap {
+  position: fixed;
+  top: 70px;
+  right: 0;
+  bottom: 40px;
+  z-index: 40;
+  animation: slideRight 0.15s ease;
+}
+@keyframes slideRight {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Bottom bar */
+.bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 68px;
+  right: 0;
+  height: 40px;
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  z-index: 50;
+}
+.page-dots {
+  display: flex;
+  gap: 6px;
+}
+.page-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--border);
+  &.active {
+    background: var(--accent);
+  }
+}
+.add-page-btn {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: "DM Sans", sans-serif;
+  &:hover {
+    background: var(--panel);
+    color: var(--text);
+    border-color: var(--accent);
+  }
+}
+
+/* Canvas Elements */
+.canvas-el {
+  position: absolute;
+  outline: none;
+  animation: fadeIn 0.15s ease;
+  &.selected {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+  }
+  &:hover:not(.selected) {
+    outline: 1.5px dashed rgba(124, 92, 252, 0.5);
+    outline-offset: 1px;
+  }
+}
+.text-el {
+  min-height: 28px;
+  padding: 4px 6px;
+  word-break: break-word;
+  white-space: pre-wrap;
+  line-height: 1.25;
+  &.editing {
+    cursor: text;
+    background: rgba(124, 92, 252, 0.06);
+    outline: 2px solid var(--accent) !important;
+  }
+}
+.img-el {
+  overflow: hidden;
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    pointer-events: none;
+    display: block;
+  }
+}
+.img-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #e8e8f4, #d4d4e8);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: #888;
+  font-size: 12px;
+  cursor: pointer;
+  svg {
+    opacity: 0.3;
+  }
+}
+
+/* Resize handles */
+.handles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.rh {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  background: #fff;
+  border: 2px solid var(--accent);
+  border-radius: 2px;
+  pointer-events: all;
+  z-index: 999;
+}
+.rh.nw {
+  top: -5px;
+  left: -5px;
+  cursor: nw-resize;
+}
+.rh.n {
+  top: -5px;
+  left: calc(50% - 4px);
+  cursor: n-resize;
+}
+.rh.ne {
+  top: -5px;
+  right: -5px;
+  cursor: ne-resize;
+}
+.rh.e {
+  right: -5px;
+  top: calc(50% - 4px);
+  cursor: e-resize;
+}
+.rh.se {
+  bottom: -5px;
+  right: -5px;
+  cursor: se-resize;
+}
+.rh.s {
+  bottom: -5px;
+  left: calc(50% - 4px);
+  cursor: s-resize;
+}
+.rh.sw {
+  bottom: -5px;
+  left: -5px;
+  cursor: sw-resize;
+}
+.rh.w {
+  left: -5px;
+  top: calc(50% - 4px);
+  cursor: w-resize;
+}
