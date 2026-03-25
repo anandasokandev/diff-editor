@@ -4,10 +4,9 @@ import { CanvasService } from '../../services/canvas.service';
 import { DownloadService } from '../../services/download.service';
 
 @Component({
-  selector: 'app-topbar',
-  standalone: true,
-  imports: [CommonModule],
-  template: `
+    selector: 'app-topbar',
+    imports: [CommonModule],
+    template: `
     <header class="topbar">
       <!-- Left: Logo + New Design -->
       <div class="left-area">
@@ -101,7 +100,7 @@ import { DownloadService } from '../../services/download.service';
       </div>
     </header>
   `,
-  styles: [`
+    styles: [`
     .topbar {
       height: 52px;
       background: var(--surface);

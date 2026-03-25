@@ -12,10 +12,9 @@ interface RszRef { id: string; dir: string; sx: number; sy: number; ow: number; 
 interface PanRef { sx: number; sy: number; sl: number; st: number; }
 
 @Component({
-  selector: 'app-canvas',
-  standalone: true,
-  imports: [CommonModule, PropertiesPanelComponent],
-  template: `
+    selector: 'app-canvas',
+    imports: [CommonModule, PropertiesPanelComponent],
+    template: `
     <div #areaEl class="canvas-area"
          [class.pan-ready]="spaceHeld && !panning"
          [class.grabbing]="panning"
@@ -193,7 +192,7 @@ interface PanRef { sx: number; sy: number; sl: number; st: number; }
       </div>
     </ng-template>
   `,
-  styles: [`
+    styles: [`
     :host { display: flex; flex: 1; overflow: hidden; }
 
     .canvas-area {

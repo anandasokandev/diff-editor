@@ -7,10 +7,9 @@ import { CanvasElement, TextElement, RectElement, ImgElement } from '../../model
 interface BgPreset { label: string; value: string; }
 
 @Component({
-  selector: 'app-properties-panel',
-  standalone: true,
-  imports: [CommonModule, FormsModule],
-  template: `
+    selector: 'app-properties-panel',
+    imports: [CommonModule, FormsModule],
+    template: `
     <!-- ═══════════════════ CANVAS BACKGROUND (no element selected) ═══════════════════ -->
     <aside class="panel" *ngIf="!sel">
       <div class="panel-header">
@@ -229,7 +228,7 @@ interface BgPreset { label: string; value: string; }
       </div>
     </aside>
   `,
-  styles: [`
+    styles: [`
     .panel {
       width: 230px;
       height: 100%;

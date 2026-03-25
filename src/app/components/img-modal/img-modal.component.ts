@@ -5,10 +5,9 @@ import { CanvasService } from '../../services/canvas.service';
 import { AiService } from '../../services/ai.service';
 
 @Component({
-  selector: 'app-img-modal',
-  standalone: true,
-  imports: [CommonModule, FormsModule],
-  template: `
+    selector: 'app-img-modal',
+    imports: [CommonModule, FormsModule],
+    template: `
     <div class="overlay" *ngIf="visible" (click)="onOverlayClick($event)">
       <div class="modal">
 
@@ -67,7 +66,7 @@ import { AiService } from '../../services/ai.service';
       </div>
     </div>
   `,
-  styles: [`
+    styles: [`
     .overlay {
       position: fixed; inset: 0;
       background: rgba(0,0,0,.8); backdrop-filter: blur(8px);

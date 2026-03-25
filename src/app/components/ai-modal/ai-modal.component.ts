@@ -8,10 +8,9 @@ import { specToElement } from '../../models/canvas.model';
 interface GenState { loading: boolean; progress: number; status: string; }
 
 @Component({
-  selector: 'app-ai-modal',
-  standalone: true,
-  imports: [CommonModule, FormsModule],
-  template: `
+    selector: 'app-ai-modal',
+    imports: [CommonModule, FormsModule],
+    template: `
     <div class="overlay" *ngIf="visible" (click)="onOverlayClick($event)">
       <div class="modal">
 
@@ -70,7 +69,7 @@ interface GenState { loading: boolean; progress: number; status: string; }
       </div>
     </div>
   `,
-  styles: [`
+    styles: [`
     .overlay {
       position: fixed; inset: 0;
       background: rgba(0,0,0,.8);

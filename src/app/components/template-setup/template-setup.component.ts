@@ -19,7 +19,6 @@ interface SizePreset {
 
 @Component({
     selector: 'app-template-setup',
-    standalone: true,
     imports: [CommonModule, FormsModule],
     template: `
     <div class="overlay" (click)="onOverlayClick($event)">

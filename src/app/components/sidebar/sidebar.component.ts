@@ -10,10 +10,9 @@ interface NavItem {
 }
 
 @Component({
-  selector: 'app-sidebar',
-  standalone: true,
-  imports: [CommonModule],
-  template: `
+    selector: 'app-sidebar',
+    imports: [CommonModule],
+    template: `
     <div class="sidebar-shell">
 
       <!-- Icon Rail -->
@@ -184,7 +183,7 @@ interface NavItem {
       </div>
     </div>
   `,
-  styles: [`
+    styles: [`
     .sidebar-shell {
       display: flex;
       height: 100%;

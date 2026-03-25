@@ -9,18 +9,17 @@ import { TemplateSetupComponent, TemplateConfig } from './components/template-se
 import { CanvasService } from './services/canvas.service';
 
 @Component({
-  selector: 'app-root',
-  standalone: true,
-  imports: [
-    CommonModule,
-    TopbarComponent,
-    SidebarComponent,
-    CanvasComponent,
-    AiModalComponent,
-    ImgModalComponent,
-    TemplateSetupComponent,
-  ],
-  template: `
+    selector: 'app-root',
+    imports: [
+        CommonModule,
+        TopbarComponent,
+        SidebarComponent,
+        CanvasComponent,
+        AiModalComponent,
+        ImgModalComponent,
+        TemplateSetupComponent,
+    ],
+    template: `
     <!-- Template Setup (shown first) -->
     <app-template-setup
       *ngIf="cs.showSetup()"
@@ -54,7 +53,7 @@ import { CanvasService } from './services/canvas.service';
       />
     </div>
   `,
-  styles: [`
+    styles: [`
     .app-shell {
       display: flex;
       flex-direction: column;
