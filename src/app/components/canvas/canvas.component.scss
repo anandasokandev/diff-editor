@@ -6,13 +6,15 @@
 
 .canvas-area {
   flex: 1;
-  background: #0e0e14;
+  background: var(--bg);
   /* Use overflow scroll so we have real scroll room for panning */
   overflow: auto;
   position: relative;
   /* hide scrollbars visually — panning is the scroll mechanism */
   scrollbar-width: none;
   -ms-overflow-style: none;
+  transition: background-color 0.3s ease;
+
   &::-webkit-scrollbar {
     display: none;
   }
@@ -33,34 +35,13 @@
 }
 
 .dot-bg {
-  position: fixed;
+  position: absolute;
   inset: 0;
-  background-image: radial-gradient(circle, #1e1e2e 1.5px, transparent 1.5px);
+  background-image: radial-gradient(circle, var(--border) 1.5px, transparent 1.5px);
   background-size: 24px 24px;
   pointer-events: none;
   z-index: 0;
-}
-
-/* Rulers */
-.ruler {
-  position: fixed;
-  background: #13131a;
-  z-index: 10;
-  pointer-events: none;
-}
-.ruler-h {
-  top: 52px;
-  left: 68px;
-  right: 0;
-  height: 18px;
-  border-bottom: 1px solid #252535;
-}
-.ruler-v {
-  top: 70px;
-  left: 68px;
-  bottom: 40px;
-  width: 18px;
-  border-right: 1px solid #252535;
+  transition: background-image 0.3s ease;
 }
 
 /* Viewport / wrapper — large padding creates scroll room for pan in every direction */
@@ -91,9 +72,10 @@
 
 .page-label {
   font-size: 11px;
-  color: #3e3e5a;
+  color: var(--muted);
   font-family: "Syne", sans-serif;
   letter-spacing: 0.04em;
+  transition: color 0.3s ease;
 }
 
 /* Canvas top-bar overlay */

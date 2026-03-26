@@ -2,6 +2,7 @@
 import { Component, EventEmitter, Output } from '@angular/core';
 import { CanvasService } from '../../services/canvas.service';
 import { DownloadService } from '../../services/download.service';
+import { ThemeService } from '../../services/theme.service';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -18,7 +19,11 @@ export class TopbarComponent {
 
   downloading = false;
 
-  constructor(public cs: CanvasService, private dlSvc: DownloadService) { }
+  constructor(
+    public cs: CanvasService,
+    public themeService: ThemeService,
+    private dlSvc: DownloadService
+  ) { }
 
   get zoomPct() { return Math.round(this.cs.zoom() * 100); }
 

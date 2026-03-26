@@ -7,6 +7,7 @@ import { AiModalComponent } from './components/ai-modal/ai-modal.component';
 import { ImgModalComponent } from './components/img-modal/img-modal.component';
 import { TemplateSetupComponent, TemplateConfig } from './components/template-setup/template-setup.component';
 import { CanvasService } from './services/canvas.service';
+import { ThemeService } from './services/theme.service';
 
 @Component({
     selector: 'app-root',
@@ -74,7 +75,10 @@ export class AppComponent {
   showImgModal = false;
   imgModalTargetId: string | null = null;
 
-  constructor(public cs: CanvasService) { }
+  constructor(
+    public cs: CanvasService,
+    public themeService: ThemeService
+  ) { }
 
   onTemplateCreated(cfg: TemplateConfig) {
     this.cs.initTemplate(cfg.name, cfg.width, cfg.height);
