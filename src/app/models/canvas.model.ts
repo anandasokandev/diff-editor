@@ -30,6 +30,7 @@ export interface ImgElement extends BaseElement {
   type: 'img';
   h: number;
   src: string | null;
+  radius?: number;
 }
 
 export type CanvasElement = RectElement | TextElement | ImgElement;
@@ -90,7 +91,7 @@ export function specToElement(s: any): CanvasElement | null {
     return { ...base, type: 'text', x: s.x || 0, y: s.y || 0, w: s.w || 240, text: s.text || 'Text', color: s.color || '#222', fontSize: s.fontSize || 24, fontWeight: s.fontWeight || 700, fontFamily: s.fontFamily || 'Syne', align: s.align || 'left' } as TextElement;
   }
   if (s.type === 'img') {
-    return { ...base, type: 'img', x: s.x || 0, y: s.y || 0, w: s.w || 300, h: s.h || 200, src: s.src || null } as ImgElement;
+    return { ...base, type: 'img', x: s.x || 0, y: s.y || 0, w: s.w || 300, h: s.h || 200, src: s.src || null, radius: s.radius || 0 } as ImgElement;
   }
   return null;
 }

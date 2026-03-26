@@ -47,12 +47,15 @@
                   [style.left.px]="el.x"
                   [style.top.px]="el.y"
                   [style.width.px]="el.w"
+                  [style.height.px]="getTextHeight(asText(el))"
                   [style.font-size.px]="asText(el).fontSize"
+                  [style.line-height]="'1.4'"
                   [style.font-weight]="asText(el).fontWeight"
                   [style.color]="asText(el).color"
                   [style.font-family]="getFf(asText(el).fontFamily)"
                   [style.text-align]="asText(el).align"
                   [style.cursor]="el.locked ? 'default' : 'move'"
+                  [style.overflow]="el.id === cs.editingId() ? 'visible' : 'hidden'"
                   [contentEditable]="el.id === cs.editingId()"
                   (mousedown)="onElDown($event, el)"
                   (dblclick)="startEdit(el)"
@@ -70,6 +73,7 @@
                   [style.top.px]="el.y"
                   [style.width.px]="el.w"
                   [style.height.px]="asImg(el).h"
+                  [style.border-radius.px]="asImg(el).radius || 0"
                   [style.cursor]="el.locked ? 'default' : 'move'"
                   (mousedown)="onElDown($event, el)">
                   @if (asImg(el).src) {

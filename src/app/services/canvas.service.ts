@@ -34,6 +34,16 @@ export class CanvasService {
   /** True when a canvas has already been initialised (safe to close the New Design modal). */
   hasExistingCanvas = computed(() => this.elements().length > 0 || this.canvasWidth() !== 1080 || this.canvasHeight() !== 1080);
 
+  // ── URL param signals (set once at startup, readable by any component)
+  urlKeywords = signal<string>('');
+  urlStyle = signal<string>('bold');
+  /**
+   * True whenever keywords are supplied in the URL.
+   * The permission popup in AppComponent guards actual generation,
+   * so this is safe to set even when saved state already exists.
+   */
+  shouldAutoGenerate = false;
+
   constructor(private http: HttpClient) {
     // Load saved state on app startup
     const saved = this.loadCanvasState();
@@ -46,10 +56,34 @@ export class CanvasService {
     const params = new URLSearchParams(window.location.search);
     const qw = parseInt(params.get('width') ?? '', 10);
     const qh = parseInt(params.get('height') ?? '', 10);
+    const qKeys = (params.get('keywords') ?? '').trim();
+    const qStyle = params.get('style') ?? 'bold';
+
+    if (qKeys) this.urlKeywords.set(qKeys);
+    if (qStyle) this.urlStyle.set(qStyle);
+
     if (qw > 0 && qh > 0) {
-      const qName = params.get('name') ?? 'Untitled Design';
-      this.initTemplate(qName, qw, qh);
+      if (saved) {
+        // Existing canvas state — just hide the modal and sync dimensions without
+        // wiping elements (preserves user's work across refreshes).
+        this.showSetup.set(false);
+        this.canvasWidth.set(qw);
+        this.canvasHeight.set(qh);
+        const qName = params.get('name');
+        if (qName) this.templateName.set(qName);
+        this.fitZoom(qw, qh);
+      } else {
+        // No prior state — first load via popup
+        const qName = params.get('name') ?? 'Untitled Design';
+        this.initTemplate(qName, qw, qh);
+      }
+    } else if (!saved) {
+      // No width/height but also no saved state — treat as direct open, keep setup modal
     }
+
+    // Show the AI permission popup whenever keywords are present in the URL.
+    // The popup itself prevents unwanted generation (user must confirm).
+    if (qKeys) this.shouldAutoGenerate = true;
   }
 
   private getCanvasState() {

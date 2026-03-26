@@ -195,6 +195,33 @@
   }
 }
 
+.reset-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+
+  &:hover:not(:disabled) {
+    background: rgba(239, 68, 68, 0.08);
+    border-color: #ef4444;
+    color: #ef4444;
+  }
+
+  &:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  span {
+    display: none;
+  }
+
+  @media (min-width: 1200px) {
+    span {
+      display: inline;
+    }
+  }
+}
+
 .export-btn {
   background: linear-gradient(135deg, #f59e0b, #f97316);
   border: none;

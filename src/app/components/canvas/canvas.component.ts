@@ -79,6 +79,13 @@ export class CanvasComponent implements AfterViewInit, OnDestroy {
   asImg(el: CanvasElement) { return el as ImgElement; }
   getFf(f: string) { return getFontFamily(f); }
 
+  /** Mirror of ai.service estimateTextHeight — must stay in sync with that formula. */
+  getTextHeight(el: TextElement): number {
+    const lines = Math.max(1, (el.text || '').split('\n').length);
+    const lineH = (el.fontSize || 24) * 1.4;
+    return Math.max(lines * lineH + 12, 28);
+  }
+
   // ─── Area mousedown: decides between pan-start and deselect ───────────────
   onAreaMouseDown(e: MouseEvent) {
     const t = e.target as HTMLElement;

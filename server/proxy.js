@@ -20,8 +20,8 @@ if (!API_KEY) {
 }
 
 const server = http.createServer((req, res) => {
-  // ── CORS headers – allow Angular dev server (port 4200)
-  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:4200');
+  // ── CORS — allow all localhost origins (local dev proxy only)
+  res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
@@ -32,7 +32,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // ── Only handle POST /api/claude (keeping endpoint name for compatibility)
+  // ── POST /api/claude → Gemini text generation
   if (req.method === 'POST' && req.url === '/api/claude') {
     let body = '';
     req.on('data', chunk => (body += chunk));
@@ -43,14 +43,14 @@ const server = http.createServer((req, res) => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-goog-api-key': API_KEY, // using header per Google docs
+          'x-goog-api-key': API_KEY,
         },
       };
 
       const proxy = https.request(options, (geminiRes) => {
         res.writeHead(geminiRes.statusCode, {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': 'http://localhost:4200',
+          'Access-Control-Allow-Origin': '*',
         });
         geminiRes.pipe(res);
       });
@@ -67,7 +67,7 @@ const server = http.createServer((req, res) => {
     return;
   }
 
-  // ── New route for image generation
+  // ── POST /api/image → Gemini image generation
   if (req.method === 'POST' && req.url === '/api/image') {
     let body = '';
     req.on('data', chunk => (body += chunk));
@@ -85,7 +85,7 @@ const server = http.createServer((req, res) => {
       const proxy = https.request(options, (imgRes) => {
         res.writeHead(imgRes.statusCode, {
           'Content-Type': 'application/json',
-          'Access-Control-Allow-Origin': 'http://localhost:4200',
+          'Access-Control-Allow-Origin': '*',
         });
         imgRes.pipe(res);
       });
@@ -113,5 +113,5 @@ server.listen(PORT, () => {
   console.log(`   API key     : ${API_KEY ? 'SET ✓' : 'MISSING ✗  — add GOOGLE_API_KEY to your .env'}`);
   console.log(`\n   /api/claude  → Gemini text generation`);
   console.log(`   /api/image   → Gemini image generation`);
-  console.log(`\n   Angular dev server → http://localhost:4200\n`);
+  console.log(`\n   CORS         : * (all origins — local dev only)\n`);
 });

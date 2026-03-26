@@ -22,21 +22,83 @@ export class DownloadService {
     _ignored: HTMLElement,
     filename = 'craftly-design.png'
   ): Promise<void> {
+    const nativeEl = this.cs.canvasNativeEl;
+    if (!nativeEl) {
+      await this.downloadFallback(filename);
+      return;
+    }
+
+    // Save and clear selection so resize handles & outlines aren't captured
+    const prevSelectedId = this.cs.selectedId();
+    const prevEditingId = this.cs.editingId();
+    this.cs.selectedId.set(null);
+    this.cs.editingId.set(null);
+
+    // We must wait a tiny bit for Angular to update the DOM (removing classes/handles)
+    await new Promise(r => setTimeout(r, 50));
+
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+
+      // Temporarily remove CSS scale to capture at natural 1:1 size
+      const wrapper = nativeEl.parentElement as HTMLElement;
+      const prevTransform = wrapper?.style.transform ?? '';
+      if (wrapper) wrapper.style.transform = 'scale(1)';
+
+      const capturedCanvas = await html2canvas(nativeEl, {
+        scale: 1,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: null
+      });
+
+      // Restore CSS scale & UI selection immediately
+      if (wrapper) wrapper.style.transform = prevTransform;
+      this.cs.selectedId.set(prevSelectedId);
+      this.cs.editingId.set(prevEditingId);
+
+      const dataUrl = capturedCanvas.toDataURL('image/png', 1.0);
+      this.sendToParent(dataUrl);
+
+      capturedCanvas.toBlob(blob => {
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = filename;
+        link.href = url;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 'image/png', 1.0);
+    } catch (e) {
+      console.warn('html2canvas failed, falling back', e);
+      
+      // Restore state
+      this.cs.selectedId.set(prevSelectedId);
+      this.cs.editingId.set(prevEditingId);
+      const wrapper = nativeEl.parentElement as HTMLElement;
+      if (wrapper && wrapper.style.transform === 'scale(1)') {
+         wrapper.style.transform = `scale(${this.cs.zoom()})`; // fallback restore
+      }
+      
+      await this.downloadFallback(filename);
+    }
+  }
+
+  private async downloadFallback(filename: string): Promise<void> {
     const CW = this.cs.canvasWidth();
     const CH = this.cs.canvasHeight();
     const bg = this.cs.canvasBg();
     const els = this.cs.elements();
 
-    // ── Create off-screen canvas
     const oc = document.createElement('canvas');
     oc.width = CW;
     oc.height = CH;
     const ctx = oc.getContext('2d')!;
 
-    // ── 1. Draw background
     await this.drawBackground(ctx, CW, CH, bg);
 
-    // ── 2. Draw each element in z-order (index = z layer)
     for (const el of els) {
       try {
         if (el.type === 'rect') await this.drawRect(ctx, el as RectElement);
@@ -47,7 +109,9 @@ export class DownloadService {
       }
     }
 
-    // ── 3. Trigger download
+    const dataUrl = oc.toDataURL('image/png', 1.0);
+    this.sendToParent(dataUrl);
+
     oc.toBlob(blob => {
       if (!blob) return;
       const url = URL.createObjectURL(blob);
@@ -59,6 +123,19 @@ export class DownloadService {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     }, 'image/png', 1.0);
+  }
+
+  /** Broadcasts the exported image data back to the parent window or opener if it exists. */
+  private sendToParent(dataUrl: string) {
+    const payload = { type: 'CRAFTLY_EXPORT', dataUrl };
+    // If opened via window.open()
+    if (window.opener && window.opener !== window) {
+       window.opener.postMessage(payload, '*');
+    }
+    // If embedded inside an iframe
+    if (window.parent && window.parent !== window) {
+       window.parent.postMessage(payload, '*');
+    }
   }
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -116,29 +193,34 @@ export class DownloadService {
     const align = (el.align as CanvasTextAlign) ?? 'left';
     const fontFamily = getFontFamily(el.fontFamily ?? 'DM Sans').split(',')[0].trim().replace(/'/g, '');
 
+    // Mirror the CSS padding on .text-el: padding: 4px 6px
+    const padX = 6;  // horizontal padding (left & right)
+    const padY = 4;  // vertical padding (top)
+
     ctx.save();
     ctx.font = `${fontWeight} ${fontSize}px "${fontFamily}", sans-serif`;
     ctx.fillStyle = color;
     ctx.textAlign = align;
     ctx.textBaseline = 'top';
 
-    // Compute the x anchor for alignment
+    // Compute the x anchor for alignment — mirrors CSS text-align within the padded content box
+    const innerW = w - padX * 2;  // content width (element width minus left+right padding)
     let textX: number;
-    if (align === 'center') textX = x + w / 2;
-    else if (align === 'right') textX = x + w;
-    else textX = x;
+    if (align === 'center') textX = x + padX + innerW / 2;
+    else if (align === 'right') textX = x + w - padX;
+    else textX = x + padX;  // 'left'
 
     const lineH = fontSize * 1.4;
     const lines = (el.text ?? '').split('\n');
 
-    // Word-wrap each line to fit within el.w
+    // Word-wrap each line to fit within the padded content width
     const wrapped: string[] = [];
     for (const raw of lines) {
       const words = raw.split(' ');
       let cur = '';
       for (const word of words) {
         const test = cur ? `${cur} ${word}` : word;
-        if (ctx.measureText(test).width > w && cur) {
+        if (ctx.measureText(test).width > innerW && cur) {
           wrapped.push(cur);
           cur = word;
         } else {
@@ -148,13 +230,13 @@ export class DownloadService {
       if (cur) wrapped.push(cur);
     }
 
-    // Clip to el width × estimated height
+    // Clip to element bounds (matching CSS overflow: hidden)
     ctx.beginPath();
-    ctx.rect(x, y, w, lineH * wrapped.length + 12 + 2);
+    ctx.rect(x, y, w, lineH * wrapped.length + padY * 2 + 2);
     ctx.clip();
 
     wrapped.forEach((line, i) => {
-      ctx.fillText(line, textX, y + i * lineH + 6);
+      ctx.fillText(line, textX, y + padY + i * lineH);
     });
 
     ctx.restore();

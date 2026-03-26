@@ -6,11 +6,11 @@ import { ThemeService } from '../../services/theme.service';
 import { CommonModule } from '@angular/common';
 
 @Component({
-    selector: 'app-topbar',
-    standalone: true,
-    imports: [CommonModule],
-    templateUrl: './topbar.component.html',
-    styleUrl: './topbar.component.scss',
+  selector: 'app-topbar',
+  standalone: true,
+  imports: [CommonModule],
+  templateUrl: './topbar.component.html',
+  styleUrl: './topbar.component.scss',
 })
 export class TopbarComponent {
   @Output() openAiModal = new EventEmitter<void>();
@@ -36,6 +36,12 @@ export class TopbarComponent {
     };
     reader.readAsDataURL(file);
     (e.target as HTMLInputElement).value = '';
+  }
+
+  resetCanvas() {
+    if (!confirm('Reset canvas? All elements will be removed and this cannot be undone.')) return;
+    this.cs.clearCanvas();
+    this.cs.clearCanvasState();
   }
 
   async download() {

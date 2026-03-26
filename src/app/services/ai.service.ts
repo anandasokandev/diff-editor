@@ -53,37 +53,14 @@ function resolveOverlaps(layout: any[], CW: number, CH: number): any[] {
 
   const isBg = (el: any) => isBackground(el, CW, CH);
 
-  const bg = layout.filter(isBg).map(el => clamp(el, CW, CH));
-  const moveable = layout.filter(el => !isBg(el)).map(el => clamp(el, CW, CH));
+  // We no longer manually push elements down to avoid overlaps. 
+  // We want free-form "Canva-like" layouts with layered text, rects, and images.
+  const clamped = layout.map(el => clamp(el, CW, CH));
 
-  moveable.sort((a, b) => a.y - b.y);
-
-  const placed: any[] = [...bg];
-
-  for (let el of moveable) {
-    let attempts = 0;
-    while (attempts < 400) {
-      const conflict = placed.find(p => !isBg(p) && overlaps(el, p, 8));
-      if (!conflict) break;
-      const conflictBottom = conflict.y + (conflict.type === 'text'
-        ? estimateTextHeight(conflict) : (conflict.h || 0));
-      el = { ...el, y: conflictBottom + 10 };
-      attempts++;
-    }
-
-    el = clamp(el, CW, CH);
-
-    const elH = el.type === 'text' ? estimateTextHeight(el) : (el.h || 0);
-    if (el.y + elH > CH) {
-      el = { ...el, y: Math.max(0, CH - elH - 8) };
-    }
-
-    placed.push(el);
-  }
-
+  // Keep backgrounds at the very bottom (indexes 0), then render the rest in order
   return [
-    ...placed.filter(isBg),
-    ...placed.filter(el => !isBg(el)).sort((a, b) => a.y - b.y),
+    ...clamped.filter(isBg),
+    ...clamped.filter(el => !isBg(el))
   ];
 }
 
@@ -144,22 +121,7 @@ export class AiService {
     return resolveOverlaps(layout, CW, CH);
   }
 
-  /**
-   * Build the system prompt dynamically using actual canvas dimensions.
-   * @param style  Visual style key
-   * @param CW     Canvas pixel width  (from CanvasService)
-   * @param CH     Canvas pixel height (from CanvasService)
-   */
   buildDesignSystemPrompt(style: string, CW: number, CH: number): string {
-    const styleDescs: Record<string, string> = {
-      bold: 'Strong contrast, vivid bold colors, heavy impactful typography, dramatic',
-      minimal: 'Generous white space, clean restrained typography, subtle muted palette',
-      elegant: 'Luxury aesthetic, gold or dark tones, serif fonts, sophisticated refined',
-      playful: 'Bright joyful colors, rounded friendly shapes, energetic fun typography',
-      dark: 'Very dark background, vivid neon accents, dramatic deep shadows, cinematic',
-      retro: 'Warm muted vintage tones, retro display fonts, nostalgic grainy texture feel',
-    };
-
     // Dynamic layout hints — scale the suggested zone positions to actual canvas size
     const ratio = CH / 800;          // scale factor relative to original 800px reference
     const heroH = Math.round(260 * (CW / 600));
@@ -186,32 +148,17 @@ export class AiService {
 ELEMENT TYPES:
 1. {"type":"rect","x":N,"y":N,"w":N,"h":N,"bg":"#hex or linear-gradient(...)","radius":N,"locked":bool}
 2. {"type":"text","x":N,"y":N,"w":N,"text":"...","color":"#hex","fontSize":N,"fontWeight":N,"fontFamily":"Syne|DM Sans|Georgia|Courier","align":"left|center|right"}
-3. {"type":"img","x":N,"y":N,"w":N,"h":N,"aiPrompt":"very descriptive image generation prompt"}
+3. {"type":"img","x":N,"y":N,"w":N,"h":N,"aiPrompt":"highly descriptive prompt for the image","radius":N}
 
-STRICT NO-OVERLAP RULES:
-- Canvas: ${CW}px wide, ${CH}px tall. Every element: x>=0, y>=0, x+w<=${CW}, y+h<=${CH}.
-- Element [0]: background rect {type:"rect",x:0,y:0,w:${CW},h:${CH},locked:true,...}
-- NO two non-background elements may overlap. Check every pair.
-- TEXT HEIGHT FORMULA: fontSize × 1.4 × lineCount + 12. Use this to plan y positions.
-  Examples: fontSize:${Math.round(64 * ratio)} 2-lines = ${Math.round(64 * ratio)}×1.4×2+12 = ${Math.round(64 * ratio * 1.4 * 2) + 12}px tall
-            fontSize:${Math.round(32 * ratio)} 1-line  = ${Math.round(32 * ratio)}×1.4×1+12 = ${Math.round(32 * ratio * 1.4) + 12}px tall
-            fontSize:${Math.round(18 * ratio)} 1-line  = ${Math.round(18 * ratio)}×1.4×1+12 = ${Math.round(18 * ratio * 1.4) + 12}px tall
-- Always add minimum 14px gap between the bottom of one element and the top of the next.
-- Horizontal: text x>=${textMinX}, x+w<=${textMaxX} (side margins minimum).
+DESIGN RULES:
+- Canvas: ${CW}px wide, ${CH}px tall. All elements must fit inside this.
+- Element [0]: MUST be the background {type:"rect",x:0,y:0,w:${CW},h:${CH},locked:true,...}.
+- TEXT HEIGHT FORMULA: fontSize × 1.4 × lineCount + 12. Ensure text fits nicely without bleeding out.
+- CANVA-LIKE DYNAMIC COMPOSITION: Do NOT just rigidly stack elements vertically. Be highly creative! You can overlay text on top of rectangles or images. You can place items side by side.
+- IMAGES & DECORATIONS: Feel free to generate MULTIPLE images via "aiPrompt" (e.g., a person on the left, an abstract decor element on the right). Place them freely!
+- NO RIGID BORDERS: Use the new "radius" property on BOTH "img" and "rect" elements for modern, smooth aesthetics (e.g., radius: ${Math.round(24 * ratio)}). Set a massive "radius" (e.g., 999) for perfect circles!
+- Ensure good contrast (e.g., white text on a dark background/rect).
 
-SUGGESTED ZONE LAYOUT for ${CW}×${CH} (adjust to fit your content):
-  [0]  y:0      h:${CH}    → background (locked, fills entire canvas)
-  [1]  y:${heroY}  h:${heroH}  → hero image (img type, full width or padded)
-  [2]  y:${titleY} h:~${titleH} → main headline text (large font, allow for multiline)
-  [3]  y:${subY}   h:~${subH}  → subheading (medium font, 1 line)
-  [4]  y:${divY}   h:${divH}   → accent rect / divider
-  [5]  y:${bodyY}  h:~${bodyH} → body copy text (small font, 2-3 lines)
-  [6]  y:${ctaRY}  h:${ctaRH}  → CTA button rect
-  [7]  y:${ctaTY}  h:~${ctaTH} → CTA label text (centered over button)
-
-You may reorder zones but the bottom of each element + 14px must be <= top of the next element.
-The background MUST cover the full ${CW}×${CH} canvas.
-
-Style: ${styleDescs[style] || styleDescs['bold']}`;
+Style: ${style}`;
   }
 }
