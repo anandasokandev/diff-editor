@@ -1,4 +1,4 @@
-import { Component, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 
@@ -24,7 +24,9 @@ interface SizePreset {
     styleUrl: './template-setup.component.scss'
 })
 export class TemplateSetupComponent {
+    @Input() canClose = false;
     @Output() created = new EventEmitter<TemplateConfig>();
+    @Output() closed = new EventEmitter<void>();
 
     config: TemplateConfig = {
         name: 'Untitled Design',
@@ -55,6 +57,10 @@ export class TemplateSetupComponent {
 
     onOverlayClick(e: MouseEvent) {
         // Don't close on overlay click — force user to create
+    }
+
+    onClose() {
+        if (this.canClose) this.closed.emit();
     }
 
     onCreate() {

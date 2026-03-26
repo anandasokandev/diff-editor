@@ -31,11 +31,24 @@ export class CanvasService {
     this.elements().find(e => e.id === this.selectedId()) ?? null
   );
 
+  /** True when a canvas has already been initialised (safe to close the New Design modal). */
+  hasExistingCanvas = computed(() => this.elements().length > 0 || this.canvasWidth() !== 1080 || this.canvasHeight() !== 1080);
+
   constructor(private http: HttpClient) {
     // Load saved state on app startup
     const saved = this.loadCanvasState();
     if (saved) {
       this.applyCanvasState(saved);
+    }
+
+    // If width & height are passed as URL query params (e.g. opened as a popup
+    // from another project), skip the setup modal and go straight to the canvas.
+    const params = new URLSearchParams(window.location.search);
+    const qw = parseInt(params.get('width') ?? '', 10);
+    const qh = parseInt(params.get('height') ?? '', 10);
+    if (qw > 0 && qh > 0) {
+      const qName = params.get('name') ?? 'Untitled Design';
+      this.initTemplate(qName, qw, qh);
     }
   }
 

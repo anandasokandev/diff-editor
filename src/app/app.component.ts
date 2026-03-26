@@ -10,22 +10,25 @@ import { CanvasService } from './services/canvas.service';
 import { ThemeService } from './services/theme.service';
 
 @Component({
-    selector: 'app-root',
-    imports: [
+  selector: 'app-root',
+  imports: [
     TopbarComponent,
     SidebarComponent,
     CanvasComponent,
     AiModalComponent,
     ImgModalComponent,
     TemplateSetupComponent
-],
-    template: `
+  ],
+  template: `
     <!-- Template Setup (shown first) -->
     @if (cs.showSetup()) {
       <app-template-setup
+        [canClose]="cs.hasExistingCanvas()"
         (created)="onTemplateCreated($event)"
+        (closed)="cs.showSetup.set(false)"
         />
     }
+
     
     <!-- Main Editor Shell -->
     @if (!cs.showSetup()) {
@@ -54,7 +57,7 @@ import { ThemeService } from './services/theme.service';
       </div>
     }
     `,
-    styles: [`
+  styles: [`
     .app-shell {
       display: flex;
       flex-direction: column;
