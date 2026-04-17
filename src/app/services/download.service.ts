@@ -73,15 +73,15 @@ export class DownloadService {
       }, 'image/png', 1.0);
     } catch (e) {
       console.warn('html2canvas failed, falling back', e);
-      
+
       // Restore state
       this.cs.selectedId.set(prevSelectedId);
       this.cs.editingId.set(prevEditingId);
       const wrapper = nativeEl.parentElement as HTMLElement;
       if (wrapper && wrapper.style.transform === 'scale(1)') {
-         wrapper.style.transform = `scale(${this.cs.zoom()})`; // fallback restore
+        wrapper.style.transform = `scale(${this.cs.zoom()})`; // fallback restore
       }
-      
+
       await this.downloadFallback(filename);
     }
   }
@@ -130,11 +130,11 @@ export class DownloadService {
     const payload = { type: 'CRAFTLY_EXPORT', dataUrl };
     // If opened via window.open()
     if (window.opener && window.opener !== window) {
-       window.opener.postMessage(payload, '*');
+      window.opener.postMessage(payload, '*');
     }
     // If embedded inside an iframe
     if (window.parent && window.parent !== window) {
-       window.parent.postMessage(payload, '*');
+      window.parent.postMessage(payload, '*');
     }
   }
 

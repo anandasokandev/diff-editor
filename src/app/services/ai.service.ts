@@ -57,10 +57,11 @@ function resolveOverlaps(layout: any[], CW: number, CH: number): any[] {
   // We want free-form "Canva-like" layouts with layered text, rects, and images.
   const clamped = layout.map(el => clamp(el, CW, CH));
 
-  // Keep backgrounds at the very bottom (indexes 0), then render the rest in order
+  // Keep backgrounds at the very bottom, then rects/imgs, then text at the top
   return [
     ...clamped.filter(isBg),
-    ...clamped.filter(el => !isBg(el))
+    ...clamped.filter(el => !isBg(el) && el.type !== 'text'),
+    ...clamped.filter(el => el.type === 'text')
   ];
 }
 
@@ -75,7 +76,7 @@ export class AiService {
     };
 
     const data: any = await firstValueFrom(
-      this.http.post('http://localhost:3000/api/claude', body)
+      this.http.post('https://localhost:7012/api/Gemini/text', body)
     );
 
     if (data.error) throw new Error(data.error.message);
@@ -87,14 +88,20 @@ export class AiService {
       contents: [{ parts: [{ text: `${prompt} (size ${w}x${h})` }] }]
     };
 
-    const data: any = await firstValueFrom(
-      this.http.post('http://localhost:3000/api/image', body)
+    // Specify responseType: 'text' because the backend returns a raw URL string, not JSON
+    const res = await firstValueFrom(
+      this.http.post('https://localhost:7012/api/Gemini/image', body, { responseType: 'text' })
     );
-    if (data.error) throw new Error(data.error.message || 'Image API error');
 
-    const b64 = data?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    if (!b64) throw new Error('No image data returned');
-    return `data:image/png;base64,${b64}`;
+    // Clean up quotes if present (some APIs wrap plain text in quotes)
+    const url = res.replace(/^"(.*)"$/, '$1').trim();
+
+    if (url && url.startsWith('https')) {
+      return url;
+    }
+
+    // Fallback: check if it's an error object in string form
+    throw new Error('No valid image URL returned from API: ' + url.slice(0, 100));
   }
 
   loadPollinationsImage(prompt: string, w = 400, h = 400) {
@@ -121,7 +128,7 @@ export class AiService {
     return resolveOverlaps(layout, CW, CH);
   }
 
-  buildDesignSystemPrompt(style: string, CW: number, CH: number): string {
+  buildDesignSystemPrompt(style: string, CW: number, CH: number, generateImage: boolean = true): string {
     // Dynamic layout hints — scale the suggested zone positions to actual canvas size
     const ratio = CH / 800;          // scale factor relative to original 800px reference
     const heroH = Math.round(260 * (CW / 600));
@@ -143,20 +150,28 @@ export class AiService {
     const textMinX = sideMargin;
     const textMaxX = CW - sideMargin;
 
+    const imgType = generateImage
+      ? `\n3. {"type":"img","x":N,"y":N,"w":N,"h":N,"aiPrompt":"highly descriptive prompt for the image","radius":N}`
+      : `\n3. {"type":"img","x":N,"y":N,"w":N,"h":N,"radius":N}`;
+
+    const imgRule = generateImage
+      ? `\n- IMAGES & DECORATIONS: Feel free to generate MULTIPLE images via "aiPrompt" (e.g., a person on the left, an abstract decor element on the right). Place them freely!`
+      : `\n- IMAGE PLACEHOLDERS: Feel free to include empty image upload placeholders ("type":"img") in your layout. The user will upload their own photos into these boxes manually. Place them creatively!`;
+
+    const imgBorderRule = `Use the new "radius" property on BOTH "img" and "rect" elements`;
+
     return `You are an expert graphic designer AI. Output ONLY a valid JSON array of canvas elements for a ${CW}×${CH}px canvas. No markdown, no explanation, only the JSON array.
 
 ELEMENT TYPES:
 1. {"type":"rect","x":N,"y":N,"w":N,"h":N,"bg":"#hex or linear-gradient(...)","radius":N,"locked":bool}
-2. {"type":"text","x":N,"y":N,"w":N,"text":"...","color":"#hex","fontSize":N,"fontWeight":N,"fontFamily":"Syne|DM Sans|Georgia|Courier","align":"left|center|right"}
-3. {"type":"img","x":N,"y":N,"w":N,"h":N,"aiPrompt":"highly descriptive prompt for the image","radius":N}
+2. {"type":"text","x":N,"y":N,"w":N,"text":"...","color":"#hex","fontSize":N,"fontWeight":N,"fontFamily":"Syne|DM Sans|Georgia|Courier","align":"left|center|right"}${imgType}
 
 DESIGN RULES:
 - Canvas: ${CW}px wide, ${CH}px tall. All elements must fit inside this.
 - Element [0]: MUST be the background {type:"rect",x:0,y:0,w:${CW},h:${CH},locked:true,...}.
-- TEXT HEIGHT FORMULA: fontSize × 1.4 × lineCount + 12. Ensure text fits nicely without bleeding out.
-- CANVA-LIKE DYNAMIC COMPOSITION: Do NOT just rigidly stack elements vertically. Be highly creative! You can overlay text on top of rectangles or images. You can place items side by side.
-- IMAGES & DECORATIONS: Feel free to generate MULTIPLE images via "aiPrompt" (e.g., a person on the left, an abstract decor element on the right). Place them freely!
-- NO RIGID BORDERS: Use the new "radius" property on BOTH "img" and "rect" elements for modern, smooth aesthetics (e.g., radius: ${Math.round(24 * ratio)}). Set a massive "radius" (e.g., 999) for perfect circles!
+- TEXT HEIGHT FORMULA: fontSize × 1.4 × lineCount + 12. Ensure text fits nicely. MAX fontSize allowed is 80. Keep text sizes reasonable!
+- CANVA-LIKE DYNAMIC COMPOSITION: Do NOT just rigidly stack elements vertically. Be highly creative! You can overlay text on top of rectangles or images. You can place items side by side.${imgRule}
+- NO RIGID BORDERS: ${imgBorderRule} for modern, smooth aesthetics (e.g., radius: ${Math.round(24 * ratio)}). Set a massive "radius" (e.g., 999) for perfect circles!
 - Ensure good contrast (e.g., white text on a dark background/rect).
 
 Style: ${style}`;

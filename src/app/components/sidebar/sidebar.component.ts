@@ -137,8 +137,6 @@ export class SidebarComponent {
   }
 
   getLayerName(el: any): string {
-    if (el.type === 'text') return (el.text || 'Text').slice(0, 20);
-    if (el.type === 'img') return 'Image';
-    return 'Shape';
+    return this.cs.getLayerName(el);
   }
 }

@@ -350,7 +350,7 @@ export class AppComponent implements OnInit {
   /** User clicked "Yes, generate design" */
   confirmGeneration() {
     this.showPermissionPopup.set(false);
-    this.runAutoGenerate(this.cs.urlKeywords(), this.cs.urlStyle());
+    this.runAutoGenerate(this.cs.urlKeywords(), this.cs.urlStyle(), this.cs.urlGenerateImage());
   }
 
   /** User clicked "Skip, start blank" */
@@ -365,7 +365,7 @@ export class AppComponent implements OnInit {
     this.autoGenStatus.set(msg);
   }
 
-  private async runAutoGenerate(keywords: string, style: string) {
+  private async runAutoGenerate(keywords: string, style: string, generateImage: boolean) {
     const CW = this.cs.canvasWidth();
     const CH = this.cs.canvasHeight();
 
@@ -373,7 +373,7 @@ export class AppComponent implements OnInit {
     this.setGenProgress(10, `Designing layout for ${CW}×${CH}px…`);
 
     try {
-      const sys = this.ai.buildDesignSystemPrompt(style, CW, CH);
+      const sys = this.ai.buildDesignSystemPrompt(style, CW, CH, generateImage);
       const prompt = `Create a ${style} design for the following keywords: ${keywords}`;
 
       this.setGenProgress(20, 'Asking AI to design your template…');
@@ -406,14 +406,16 @@ export class AppComponent implements OnInit {
       if (bgSpec?.bg) this.cs.setCanvasBg(bgSpec.bg);
       this.cs.setElements(newEls as any);
 
-      for (let i = 0; i < imgSpecs.length; i++) {
-        const sp = imgSpecs[i];
-        this.setGenProgress(70 + i * 10, `Generating image ${i + 1} of ${imgSpecs.length}…`);
-        try {
-          const src = await this.ai.generateImage(sp.prompt, sp.w, sp.h);
-          this.cs.setImageSrc(sp.id, src);
-        } catch (err) {
-          console.warn('Image gen failed', err);
+      if (generateImage) {
+        for (let i = 0; i < imgSpecs.length; i++) {
+          const sp = imgSpecs[i];
+          this.setGenProgress(70 + i * 10, `Generating image ${i + 1} of ${imgSpecs.length}…`);
+          try {
+            const src = await this.ai.generateImage(sp.prompt, sp.w, sp.h);
+            this.cs.setImageSrc(sp.id, src);
+          } catch (err) {
+            console.warn('Image gen failed', err);
+          }
         }
       }
 

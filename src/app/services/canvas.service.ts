@@ -37,6 +37,7 @@ export class CanvasService {
   // ── URL param signals (set once at startup, readable by any component)
   urlKeywords = signal<string>('');
   urlStyle = signal<string>('bold');
+  urlGenerateImage = signal<boolean>(true);
   /**
    * True whenever keywords are supplied in the URL.
    * The permission popup in AppComponent guards actual generation,
@@ -58,9 +59,11 @@ export class CanvasService {
     const qh = parseInt(params.get('height') ?? '', 10);
     const qKeys = (params.get('keywords') ?? '').trim();
     const qStyle = params.get('style') ?? 'bold';
+    const qImage = params.get('image');
 
     if (qKeys) this.urlKeywords.set(qKeys);
     if (qStyle) this.urlStyle.set(qStyle);
+    if (qImage === 'no') this.urlGenerateImage.set(false);
 
     if (qw > 0 && qh > 0) {
       if (saved) {
@@ -86,7 +89,7 @@ export class CanvasService {
     if (qKeys) this.shouldAutoGenerate = true;
   }
 
-  private getCanvasState() {
+  public getCanvasState() {
     return {
       elements: this.elements(),
       canvasWidth: this.canvasWidth(),
@@ -122,6 +125,33 @@ export class CanvasService {
     } catch (err) {
       console.warn('Could not clear saved canvas state', err);
     }
+  }
+
+  public getLayerName(el: any): string {
+    if (el.type === 'text') return (el.text || 'Text').slice(0, 20) || 'Text';
+    if (el.type === 'img') return 'Image';
+    return 'Shape';
+  }
+
+  /** Returns an enriched JSON object for external use/logging */
+  public exportCanvasJSON() {
+    return {
+      canvasWidth: this.canvasWidth(),
+      canvasHeight: this.canvasHeight(),
+      canvasName: this.templateName(),
+      canvasBg: this.canvasBg(),
+      elements: this.elements().map(el => {
+        // Enforce a height for images/rects, or estimate for text
+        const h = (el as any).h || (el.type === 'text' ? (el as any).fontSize * 1.4 : 0);
+        return {
+          ...el,
+          width: el.w,
+          height: Math.round(h),
+          layerName: this.getLayerName(el),
+          content: el.type === 'text' ? (el as any).text : (el.type === 'img' ? (el as any).src : 'Shape Content')
+        };
+      })
+    };
   }
 
   private applyCanvasState(state: any) {

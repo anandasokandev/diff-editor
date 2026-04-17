@@ -47,6 +47,12 @@ export class TopbarComponent {
   async download() {
     this.downloading = true;
     try {
+      // Log the reusable enriched canvas JSON to console as requested
+      const state = this.cs.exportCanvasJSON();
+      console.log('--- EXPORTED CANVAS JSON ---');
+      console.log(JSON.stringify(state, null, 2));
+      console.log('---------------------------');
+
       // DownloadService now reads all data from CanvasService — no DOM element needed
       await this.dlSvc.downloadAsPng(null as any, `${this.cs.templateName()}.png`);
     } catch (err) {

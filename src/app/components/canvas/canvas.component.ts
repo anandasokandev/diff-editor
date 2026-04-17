@@ -6,7 +6,6 @@ import { DomSanitizer } from '@angular/platform-browser';
 import { CanvasService } from '../../services/canvas.service';
 import { CanvasElement, TextElement, RectElement, ImgElement, getFontFamily } from '../../models/canvas.model';
 import { PropertiesPanelComponent } from '../properties-panel/properties-panel.component';
-import { style } from '@angular/animations';
 
 interface DragRef { id: string; sx: number; sy: number; ol: number; ot: number; }
 interface RszRef { id: string; dir: string; sx: number; sy: number; ow: number; oh: number; ol: number; ot: number; }

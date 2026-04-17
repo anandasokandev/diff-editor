@@ -6,7 +6,7 @@ type Theme = 'dark' | 'light';
   providedIn: 'root'
 })
 export class ThemeService {
-  theme = signal<Theme>('dark');
+  theme = signal<Theme>('light');
 
   constructor() {
     const savedTheme = localStorage.getItem('theme') as Theme | null;
