@@ -1,0 +1,107 @@
+
+<!-- Top-level Login Overlay -->
+@if (!auth.isAuthenticated() && !isCheckingUrlAuth()) {
+<app-login (loginSuccess)="onLoginSuccess()" />
+}
+
+@if (isCheckingUrlAuth()) {
+<div class="overlay-backdrop">
+    <div class="autogen-card">
+        <div class="autogen-spinner"></div>
+        <div class="autogen-title">Authenticating...</div>
+    </div>
+</div>
+}
+<!-- Template Setup (shown first) -->
+@if (cs.showSetup()) {
+<app-template-setup [canClose]="cs.hasExistingCanvas()" (created)="onTemplateCreated($event)"
+    (closed)="cs.showSetup.set(false)" />
+}
+
+<!-- Main Editor Shell -->
+@if (!cs.showSetup()) {
+<div class="app-shell">
+    <app-topbar (openAiModal)="showAiModal = true" (openImgModal)="openImgModalForNew()"
+        (newDesign)="cs.showSetup.set(true)" />
+    <div class="workspace">
+        <app-sidebar (openAiModal)="showAiModal = true" (openImgModal)="openImgModalForNew()" />
+        <app-canvas />
+    </div>
+    <app-ai-modal [visible]="showAiModal" (close)="showAiModal = false" />
+    <app-img-modal [visible]="showImgModal" [targetId]="imgModalTargetId" (close)="showImgModal = false" />
+</div>
+}
+
+<!-- ── AI Permission Popup (outside shell – always reachable) ── -->
+@if (showPermissionPopup()) {
+<div class="overlay-backdrop">
+    <div class="permission-card">
+
+        <!-- Icon header -->
+        <div class="perm-icon-wrap">
+            <div class="perm-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                    stroke-linecap="round">
+                    <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z" />
+                </svg>
+            </div>
+        </div>
+
+        <h2 class="perm-title">Generate AI Design?</h2>
+        <p class="perm-sub">
+            This canvas was opened with keywords. Would you like the AI to automatically
+            create a design based on them?
+        </p>
+
+        <!-- Keywords preview -->
+        <div class="perm-keywords">
+            @for (kw of autoGenKeywordList(); track kw) {
+            <span class="kw-chip">{{ kw }}</span>
+            }
+        </div>
+
+        <!-- Style badge -->
+        <div class="perm-style-row">
+            <span class="style-label">Style</span>
+            <span class="style-badge">{{ cs.urlStyle() }}</span>
+        </div>
+
+        <!-- Action buttons -->
+        <div class="perm-actions">
+            <button class="perm-btn perm-cancel" (click)="declineGeneration()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round">
+                    <path d="M18 6L6 18M6 6l12 12" />
+                </svg>
+                Skip, start blank
+            </button>
+            <button class="perm-btn perm-confirm" (click)="confirmGeneration()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                    stroke-linecap="round">
+                    <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z" />
+                </svg>
+                Yes, generate design
+            </button>
+        </div>
+    </div>
+</div>
+}
+
+<!-- ── Auto-generation loading overlay ── -->
+@if (autoGenLoading()) {
+<div class="overlay-backdrop">
+    <div class="autogen-card">
+        <div class="autogen-spinner"></div>
+        <div class="autogen-title">✦ Generating your design</div>
+        <div class="autogen-status">{{ autoGenStatus() }}</div>
+        <div class="autogen-keywords">
+            @for (kw of autoGenKeywordList(); track kw) {
+            <span class="kw-chip">{{ kw }}</span>
+            }
+        </div>
+        <div class="autogen-bar-track">
+            <div class="autogen-bar" [style.width.%]="autoGenProgress()"></div>
+        </div>
+    </div>
+</div>
+}

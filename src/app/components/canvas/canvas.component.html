@@ -44,7 +44,7 @@
           [style.border-radius.px]="asImg(el).radius || 0" [style.cursor]="el.locked ? 'default' : 'move'"
           (mousedown)="onElDown($event, el)">
           @if (asImg(el).src) {
-          <img [src]="asImg(el).src" />
+          <img [src]="asImg(el).src" crossorigin="anonymous" />
           }
           @if (!asImg(el).src) {
           <div class="img-placeholder" (click)="clickPlaceholder(el, $event)">

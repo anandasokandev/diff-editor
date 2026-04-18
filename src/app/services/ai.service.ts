@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
+import { AuthService } from './auth.service';
 
 // ── Estimated height for a text element
 function estimateTextHeight(el: any): number {
@@ -66,8 +67,15 @@ function resolveOverlaps(layout: any[], CW: number, CH: number): any[] {
 }
 
 @Injectable({ providedIn: 'root' })
+
 export class AiService {
-  constructor(private http: HttpClient) { }
+  constructor(private http: HttpClient, private auth: AuthService) { }
+
+  private getHeaders(): HttpHeaders {
+    return new HttpHeaders({
+      'Authorization': `Bearer ${this.auth.token()}`
+    });
+  }
 
   async callClaude(system: string, userMsg: string): Promise<string> {
     const body = {
@@ -76,7 +84,7 @@ export class AiService {
     };
 
     const data: any = await firstValueFrom(
-      this.http.post('https://localhost:7012/api/Gemini/text', body)
+      this.http.post('https://localhost:7012/api/Gemini/text', body, { headers: this.getHeaders() })
     );
 
     if (data.error) throw new Error(data.error.message);
@@ -90,7 +98,10 @@ export class AiService {
 
     // Specify responseType: 'text' because the backend returns a raw URL string, not JSON
     const res = await firstValueFrom(
-      this.http.post('https://localhost:7012/api/Gemini/image', body, { responseType: 'text' })
+      this.http.post('https://localhost:7012/api/Gemini/image', body, { 
+        headers: this.getHeaders(),
+        responseType: 'text' 
+      })
     );
 
     // Clean up quotes if present (some APIs wrap plain text in quotes)
@@ -108,7 +119,7 @@ export class AiService {
     return this.generateImage(prompt, w, h);
   }
 
-  async generateImgVariants(prompt: string, count = 3): Promise<(string | null)[]> {
+  async generateImgVariants(prompt: string, count = 1): Promise<(string | null)[]> {
     const results: (string | null)[] = [];
     for (let i = 0; i < count; i++) {
       try {

@@ -48,7 +48,7 @@ export class DownloadService {
       const capturedCanvas = await html2canvas(nativeEl, {
         scale: 1,
         useCORS: true,
-        allowTaint: true,
+        allowTaint: false,
         backgroundColor: null
       });
 
@@ -269,7 +269,8 @@ export class DownloadService {
 
       img.onload = () => {
         ctx.save();
-        this.roundRect(ctx, x, y, w, h, 0);
+        const radius = el.radius ?? 0;
+        this.roundRect(ctx, x, y, w, h, radius);
         ctx.clip();
         // object-fit: cover — compute scale and offset
         const scaleX = w / img.naturalWidth;
