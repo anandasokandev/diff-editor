@@ -1,10 +1,11 @@
 import { provideZoneChangeDetection } from "@angular/core";
 import { bootstrapApplication } from '@angular/platform-browser';
 import { AppComponent } from './app/app.component';
-import { provideHttpClient } from '@angular/common/http';
+import { provideHttpClient, withInterceptors } from '@angular/common/http';
+import { authInterceptor } from "./app/interceptors/auth.interceptor";
 
 bootstrapApplication(AppComponent, {
   providers: [
-    provideZoneChangeDetection(),provideHttpClient()
+    provideZoneChangeDetection(),provideHttpClient(withInterceptors([authInterceptor]))
   ]
 }).catch(err => console.error(err));

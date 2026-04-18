@@ -71,20 +71,14 @@ function resolveOverlaps(layout: any[], CW: number, CH: number): any[] {
 export class AiService {
   constructor(private http: HttpClient, private auth: AuthService) { }
 
-  private getHeaders(): HttpHeaders {
-    return new HttpHeaders({
-      'Authorization': `Bearer ${this.auth.token()}`
-    });
-  }
-
-  async callClaude(system: string, userMsg: string): Promise<string> {
+  async callClaude(system: string, userMsg: string) {
     const body = {
       contents: [{ parts: [{ text: userMsg }] }],
       systemInstruction: { parts: [{ text: system }] }
     };
 
     const data: any = await firstValueFrom(
-      this.http.post('https://localhost:7012/api/Gemini/text', body, { headers: this.getHeaders() })
+      this.http.post('https://localhost:7012/api/Gemini/text', body)
     );
 
     if (data.error) throw new Error(data.error.message);
@@ -98,8 +92,7 @@ export class AiService {
 
     // Specify responseType: 'text' because the backend returns a raw URL string, not JSON
     const res = await firstValueFrom(
-      this.http.post('https://localhost:7012/api/Gemini/image', body, { 
-        headers: this.getHeaders(),
+      this.http.post('https://localhost:7012/api/Gemini/image', body, {
         responseType: 'text' 
       })
     );
