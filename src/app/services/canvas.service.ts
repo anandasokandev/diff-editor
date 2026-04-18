@@ -24,6 +24,8 @@ export class CanvasService {
   // ── Setup screen flag
   showSetup = signal(true);
 
+  private saveTimeout: any;
+
   // ── Native canvas DOM element (set by CanvasComponent after view init)
   canvasNativeEl: HTMLElement | null = null;
 
@@ -45,7 +47,7 @@ export class CanvasService {
    */
   shouldAutoGenerate = false;
 
-  constructor(private http: HttpClient) {
+  constructor() {
     // Load saved state on app startup
     const saved = this.loadCanvasState();
     if (saved) {
@@ -107,6 +109,15 @@ export class CanvasService {
     } catch (err) {
       console.warn('Could not save canvas state to localStorage', err);
     }
+  }
+
+  private scheduleSave() {
+    clearTimeout(this.saveTimeout);
+    this.saveTimeout = setTimeout(() => {
+      console.log('Changes Saved');
+      
+      this.saveCanvasState();
+    }, 300);
   }
 
   private loadCanvasState() {
@@ -180,19 +191,19 @@ export class CanvasService {
     this.editingId.set(null);
     this.showSetup.set(false);
     this.fitZoom(w, h);
-    this.saveCanvasState();
+    this.scheduleSave();
   }
 
   setCanvasBg(bg: string) {
     this.canvasBg.set(bg);
-    this.saveCanvasState();
+    this.scheduleSave();
   }
 
   setElements(els: CanvasElement[]) {
     this.elements.set(els);
     this.selectedId.set(null);
     this.editingId.set(null);
-    this.saveCanvasState();
+    this.scheduleSave();
   }
 
   fitZoom(w: number, h: number) {
@@ -200,7 +211,7 @@ export class CanvasService {
     const availH = window.innerHeight * 0.80;
     const z = Math.min(availW / w, availH / h, 1.5);
     this.zoom.set(Math.max(0.1, parseFloat(z.toFixed(2))));
-    this.saveCanvasState();
+    this.scheduleSave();
   }
 
   // ── Preset loading
@@ -239,7 +250,7 @@ export class CanvasService {
     if (!el) return null;
     this.elements.update(els => [...els, el]);
     this.selectedId.set(el.id);
-    this.saveCanvasState();
+    this.scheduleSave();
     return el;
   }
 
@@ -247,13 +258,13 @@ export class CanvasService {
     this.elements.update(els =>
       els.map(e => e.id === id ? { ...e, ...patch } as CanvasElement : e)
     );
-    this.saveCanvasState();
+    this.scheduleSave();
   }
 
   deleteElement(id: string) {
     this.elements.update(els => els.filter(e => e.id !== id));
     if (this.selectedId() === id) this.selectedId.set(null);
-    this.saveCanvasState();
+    this.scheduleSave();
   }
 
   duplicateElement(id: string) {
@@ -262,7 +273,7 @@ export class CanvasService {
     const copy: CanvasElement = { ...src, id: uid(), x: src.x + 20, y: src.y + 20 } as CanvasElement;
     this.elements.update(els => [...els, copy]);
     this.selectedId.set(copy.id);
-    this.saveCanvasState();
+    this.scheduleSave();
   }
 
   moveLayer(id: string, dir: 1 | -1) {
@@ -274,7 +285,7 @@ export class CanvasService {
       [arr[i], arr[j]] = [arr[j], arr[i]];
       return arr;
     });
-    this.saveCanvasState();
+    this.scheduleSave();
   }
 
   setImageSrc(id: string, src: string) {
@@ -285,11 +296,11 @@ export class CanvasService {
     this.elements.set([]);
     this.selectedId.set(null);
     this.editingId.set(null);
-    this.saveCanvasState();
+    this.scheduleSave();
   }
 
   // ── Zoom helpers
-  zoomIn() { this.zoom.update(z => Math.min(3, parseFloat((z + 0.1).toFixed(2)))); this.saveCanvasState(); }
-  zoomOut() { this.zoom.update(z => Math.max(0.1, parseFloat((z - 0.1).toFixed(2)))); this.saveCanvasState(); }
+  zoomIn() { this.zoom.update(z => Math.min(3, parseFloat((z + 0.1).toFixed(2)))); this.scheduleSave(); }
+  zoomOut() { this.zoom.update(z => Math.max(0.1, parseFloat((z - 0.1).toFixed(2)))); this.scheduleSave(); }
   zoomReset() { this.fitZoom(this.canvasWidth(), this.canvasHeight()); }
 }
