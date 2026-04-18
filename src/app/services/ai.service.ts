@@ -66,75 +66,83 @@ function resolveOverlaps(layout: any[], CW: number, CH: number): any[] {
   ];
 }
 
-@Injectable({ providedIn: 'root' })
-
+@Injectable({ providedIn: "root" })
 export class AiService {
-  constructor(private http: HttpClient, private auth: AuthService) { }
+  constructor(
+    private http: HttpClient,
+    private auth: AuthService,
+  ) {}
 
   async callClaude(system: string, userMsg: string) {
     const body = {
       contents: [{ parts: [{ text: userMsg }] }],
-      systemInstruction: { parts: [{ text: system }] }
+      systemInstruction: { parts: [{ text: system }] },
     };
 
     const data: any = await firstValueFrom(
-      this.http.post('https://localhost:7012/api/Gemini/text', body)
+      this.http.post("https://localhost:7012/api/Gemini/text", body),
     );
 
     if (data.error) throw new Error(data.error.message);
-    return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || "";
   }
 
   async generateImage(prompt: string, w = 400, h = 400): Promise<string> {
     const body = {
-      contents: [{ parts: [{ text: `${prompt} (size ${w}x${h})` }] }]
+      contents: [{ parts: [{ text: `${prompt} (size ${w}x${h})` }] }],
     };
 
     // Specify responseType: 'text' because the backend returns a raw URL string, not JSON
     const res = await firstValueFrom(
-      this.http.post('https://localhost:7012/api/Gemini/image', body, {
-        responseType: 'text' 
-      })
+      this.http.post("https://localhost:7012/api/Gemini/image", body, {
+        responseType: "text",
+      }),
     );
 
     // Clean up quotes if present (some APIs wrap plain text in quotes)
-    const url = res.replace(/^"(.*)"$/, '$1').trim();
+    const url = res.replace(/^"(.*)"$/, "$1").trim();
 
-    if (url && url.startsWith('https')) {
+    if (url && url.startsWith("https")) {
       return url;
     }
 
     // Fallback: check if it's an error object in string form
-    throw new Error('No valid image URL returned from API: ' + url.slice(0, 100));
+    throw new Error(
+      "No valid image URL returned from API: " + url.slice(0, 100),
+    );
   }
 
   loadPollinationsImage(prompt: string, w = 400, h = 400) {
     return this.generateImage(prompt, w, h);
   }
 
-  async generateImgVariants(prompt: string, count = 1): Promise<(string | null)[]> {
-    const results: (string | null)[] = [];
-    for (let i = 0; i < count; i++) {
-      try {
-        results.push(await this.generateImage(prompt, 512, 512));
-      } catch {
-        results.push(null);
-      }
-    }
-    return results;
+  async generateImgVariants(
+    prompt: string,
+    count = 3,
+  ): Promise<(string | null)[]> {
+    const promises = Array.from({ length: count }, () =>
+      this.generateImage(prompt, 512, 512).catch(() => null),
+    );
+
+    return Promise.all(promises);
   }
 
   /** Parse raw AI JSON + apply overlap resolver using the actual canvas dimensions. */
   parseAndFixLayout(raw: string, CW: number, CH: number): any[] {
-    const clean = raw.replace(/```json|```/g, '').trim();
+    const clean = raw.replace(/```json|```/g, "").trim();
     const m = clean.match(/\[[\s\S]*\]/);
     const layout = JSON.parse(m ? m[0] : clean);
     return resolveOverlaps(layout, CW, CH);
   }
 
-  buildDesignSystemPrompt(style: string, CW: number, CH: number, generateImage: boolean = true): string {
+  buildDesignSystemPrompt(
+    style: string,
+    CW: number,
+    CH: number,
+    generateImage: boolean = true,
+  ): string {
     // Dynamic layout hints — scale the suggested zone positions to actual canvas size
-    const ratio = CH / 800;          // scale factor relative to original 800px reference
+    const ratio = CH / 800; // scale factor relative to original 800px reference
     const heroH = Math.round(260 * (CW / 600));
     const heroY = 0;
     const titleY = heroY + heroH + 14;
