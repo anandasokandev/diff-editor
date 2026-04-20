@@ -4,6 +4,8 @@ import {
   CanvasElement, RectElement, TextElement, ImgElement,
   specToElement, uid, PRESETS
 } from '../models/canvas.model';
+import { AiService } from './ai.service';
+import { DownloadService } from './download.service';
 
 @Injectable({ providedIn: 'root' })
 export class CanvasService {
@@ -20,11 +22,13 @@ export class CanvasService {
   canvasHeight = signal(1080);
   templateName = signal('Untitled Design');
   canvasBg = signal<string>('#ffffff');   // ← canvas background fill
+  templateId = signal(0);
 
   // ── Setup screen flag
   showSetup = signal(true);
 
   private saveTimeout: any;
+  private previewTimeout: any;
 
   // ── Native canvas DOM element (set by CanvasComponent after view init)
   canvasNativeEl: HTMLElement | null = null;
@@ -40,6 +44,8 @@ export class CanvasService {
   urlKeywords = signal<string>('');
   urlStyle = signal<string>('bold');
   urlGenerateImage = signal<boolean>(true);
+  /** Template ID from URL — used for magic-link direct template load */
+  urlTemplateId = signal<number | null>(null);
   /**
    * True whenever keywords are supplied in the URL.
    * The permission popup in AppComponent guards actual generation,
@@ -47,7 +53,11 @@ export class CanvasService {
    */
   shouldAutoGenerate = false;
 
-  constructor() {
+  constructor(
+    private http: HttpClient,
+    private ai: AiService,
+    private dl: DownloadService
+  ) {
     // Load saved state on app startup
     const saved = this.loadCanvasState();
     if (saved) {
@@ -62,10 +72,21 @@ export class CanvasService {
     const qKeys = (params.get('keywords') ?? '').trim();
     const qStyle = params.get('style') ?? 'bold';
     const qImage = params.get('image');
+    // 1. Check query parameters for templateId=123
+    let qTemplateId = parseInt(params.get('templateId') ?? '', 10);
+
+    // 2. Fallback: Check URL path for /canvas/123
+    if (isNaN(qTemplateId) || qTemplateId <= 0) {
+      const pathMatch = window.location.pathname.match(/\/canvas\/(\d+)/);
+      if (pathMatch && pathMatch[1]) {
+        qTemplateId = parseInt(pathMatch[1], 10);
+      }
+    }
 
     if (qKeys) this.urlKeywords.set(qKeys);
     if (qStyle) this.urlStyle.set(qStyle);
     if (qImage === 'no') this.urlGenerateImage.set(false);
+    if (!isNaN(qTemplateId) && qTemplateId > 0) this.urlTemplateId.set(qTemplateId);
 
     if (qw > 0 && qh > 0) {
       if (saved) {
@@ -106,18 +127,51 @@ export class CanvasService {
   private saveCanvasState() {
     try {
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.getCanvasState()));
+
+      const tid = this.templateId();
+      if (tid > 0) {
+        this.ai.updateTemplate(tid, JSON.stringify(this.elements())).catch(err => {
+          console.warn('Failed to autosave to backend', err);
+        });
+      }
     } catch (err) {
-      console.warn('Could not save canvas state to localStorage', err);
+      console.warn('Could not save canvas state', err);
     }
   }
 
   private scheduleSave() {
     clearTimeout(this.saveTimeout);
     this.saveTimeout = setTimeout(() => {
-      console.log('Changes Saved');
-      
       this.saveCanvasState();
-    }, 300);
+    }, 1000);
+  }
+
+  /**
+   * Schedules a thumbnail preview update.
+   * Debounced by 2s to allow for multiple rapid "heavy" changes to resolve.
+   */
+  private schedulePreviewUpdate() {
+    const tid = this.templateId();
+    if (tid <= 0) return;
+
+    clearTimeout(this.previewTimeout);
+    this.previewTimeout = setTimeout(async () => {
+      try {
+        const blob = await this.dl.exportAsBlob(
+          this.elements(),
+          this.canvasWidth(),
+          this.canvasHeight(),
+          this.canvasBg()
+        );
+        const imageUrl = await this.ai.uploadImage(blob);
+        
+        // Update template metadata with new preview URL
+        await this.ai.updateTemplate(tid, JSON.stringify(this.elements()), imageUrl);
+        console.log('Preview thumbnail updated');
+      } catch (err) {
+        console.warn('Failed to update design preview', err);
+      }
+    }, 2000);
   }
 
   private loadCanvasState() {
@@ -187,16 +241,40 @@ export class CanvasService {
     this.canvasHeight.set(h);
     this.canvasBg.set('#ffffff');
     this.elements.set([]);
+    this.templateId.set(0);
     this.selectedId.set(null);
     this.editingId.set(null);
     this.showSetup.set(false);
     this.fitZoom(w, h);
     this.scheduleSave();
+    this.schedulePreviewUpdate();
+  }
+
+  /** Load a fully fetched template card (from dashboard or URL templateId) into the canvas */
+  loadTemplateData(template: { id: number; templateName: string; width?: number; height?: number; canvasBg: string; jsonData: any[] }) {
+    this.templateId.set(template.id || 0);
+    this.templateName.set(template.templateName ?? 'Untitled Design');
+    this.canvasWidth.set(template.width ?? 1080);
+    this.canvasHeight.set(template.height ?? 1080);
+    this.canvasBg.set(template.canvasBg ?? '#ffffff');
+    // Map raw specs to internal CanvasElements (ensures IDs exist)
+    const processedEls = (template.jsonData ?? [])
+      .map(s => specToElement(s))
+      .filter((el): el is CanvasElement => el !== null);
+
+    this.elements.set(processedEls);
+    this.selectedId.set(null);
+    this.editingId.set(null);
+    this.showSetup.set(false);
+    this.fitZoom(template.width ?? 1080, template.height ?? 1080);
+    this.scheduleSave();
+    this.schedulePreviewUpdate();
   }
 
   setCanvasBg(bg: string) {
     this.canvasBg.set(bg);
     this.scheduleSave();
+    this.schedulePreviewUpdate();
   }
 
   setElements(els: CanvasElement[]) {
@@ -242,6 +320,7 @@ export class CanvasService {
     if (bgSpec?.bg) this.canvasBg.set(bgSpec.bg);
 
     this.setElements(els);
+    this.schedulePreviewUpdate();
   }
 
   // ── Element CRUD
@@ -251,6 +330,7 @@ export class CanvasService {
     this.elements.update(els => [...els, el]);
     this.selectedId.set(el.id);
     this.scheduleSave();
+    this.schedulePreviewUpdate();
     return el;
   }
 
@@ -265,6 +345,7 @@ export class CanvasService {
     this.elements.update(els => els.filter(e => e.id !== id));
     if (this.selectedId() === id) this.selectedId.set(null);
     this.scheduleSave();
+    this.schedulePreviewUpdate();
   }
 
   duplicateElement(id: string) {
@@ -274,6 +355,7 @@ export class CanvasService {
     this.elements.update(els => [...els, copy]);
     this.selectedId.set(copy.id);
     this.scheduleSave();
+    this.schedulePreviewUpdate();
   }
 
   moveLayer(id: string, dir: 1 | -1) {

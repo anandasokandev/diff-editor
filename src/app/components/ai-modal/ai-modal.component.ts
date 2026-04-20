@@ -1,17 +1,18 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, signal } from '@angular/core';
 
 import { FormsModule } from '@angular/forms';
 import { CanvasService } from '../../services/canvas.service';
 import { AiService } from '../../services/ai.service';
 import { specToElement } from '../../models/canvas.model';
+import { AuthService } from 'src/app/services/auth.service';
 
 interface GenState { loading: boolean; progress: number; status: string; }
 
 @Component({
-    selector: 'app-ai-modal',
-    imports: [FormsModule],
-    templateUrl: './ai-modal.component.html',
-    styleUrl: './ai-modal.component.scss',
+  selector: 'app-ai-modal',
+  imports: [FormsModule],
+  templateUrl: './ai-modal.component.html',
+  styleUrl: './ai-modal.component.scss',
 })
 export class AiModalComponent {
   @Input() visible = false;
@@ -39,7 +40,11 @@ export class AiModalComponent {
     { value: 'retro', icon: '📼', label: 'RETRO', sub: 'Vintage vibes' },
   ];
 
-  constructor(public cs: CanvasService, private ai: AiService) { }
+  constructor(
+    public cs: CanvasService,
+    private ai: AiService,
+    private auth: AuthService
+  ) { }
 
   onOverlayClick(e: MouseEvent) {
     if ((e.target as HTMLElement).classList.contains('overlay')) this.close.emit();
@@ -51,20 +56,32 @@ export class AiModalComponent {
 
   async generate() {
     if (!this.aiPrompt.trim()) return;
+
     const CW = this.cs.canvasWidth();
     const CH = this.cs.canvasHeight();
 
     this.setProgress(10, `Designing layout for ${CW}×${CH}px canvas…`);
 
-    const sys = this.ai.buildDesignSystemPrompt(this.aiStyle, CW, CH);
-
     try {
-      const raw = await this.ai.callClaude(sys, `Create a ${this.aiStyle} design for: ${this.aiPrompt}`);
+      this.setProgress(30, 'Generating design…');
+
+      const res: any = await this.ai.generateTemplate({
+        prompt: this.aiPrompt,
+        width: CW,
+        height: CH,
+        style: this.aiStyle,
+        templateName: 'My Design',
+        email: this.auth.email()
+      });
+
+      // 🔥 STORE TEMPLATE ID (IMPORTANT FOR AUTOSAVE)
+      this.cs.templateId.set(res.id);
+
       this.setProgress(45, 'Parsing layout…');
 
       let layout: any[];
       try {
-        layout = this.ai.parseAndFixLayout(raw, CW, CH);
+        layout = res.jsonData;
       } catch {
         throw new Error('Could not parse AI layout. Please try again.');
       }

@@ -1,11 +1,6 @@
 import { Component, OnInit, signal } from '@angular/core';
+import { Router, RouterOutlet } from '@angular/router';
 
-import { TopbarComponent } from './components/topbar/topbar.component';
-import { SidebarComponent } from './components/sidebar/sidebar.component';
-import { CanvasComponent } from './components/canvas/canvas.component';
-import { AiModalComponent } from './components/ai-modal/ai-modal.component';
-import { ImgModalComponent } from './components/img-modal/img-modal.component';
-import { TemplateSetupComponent, TemplateConfig } from './components/template-setup/template-setup.component';
 import { CanvasService } from './services/canvas.service';
 import { AiService } from './services/ai.service';
 import { ThemeService } from './services/theme.service';
@@ -16,40 +11,33 @@ import { specToElement } from './models/canvas.model';
 @Component({
   selector: 'app-root',
   imports: [
-    TopbarComponent,
-    SidebarComponent,
-    CanvasComponent,
-    AiModalComponent,
-    ImgModalComponent,
-    TemplateSetupComponent,
+    RouterOutlet,
     LoginComponent
   ],
   templateUrl: './app.component.html',
   styleUrl: './app.component.scss'
 })
 export class AppComponent implements OnInit {
-  showAiModal = false;
-  showImgModal = false;
-  imgModalTargetId: string | null = null;
-
   showPermissionPopup = signal(false);
   autoGenLoading = signal(false);
   isCheckingUrlAuth = signal(false);
   autoGenProgress = signal(0);
   autoGenStatus = signal('');
   autoGenKeywordList = signal<string[]>([]);
+  urlAuthStatus = signal('Authenticating...');
 
   constructor(
     public cs: CanvasService,
     public themeService: ThemeService,
     private ai: AiService,
-    public auth: AuthService
+    public auth: AuthService,
+    private router: Router
   ) { }
 
   async ngOnInit() {
     await this.checkAuthFromUrl();
 
-    // Only proceed with auto-generation if authenticated
+    // Only proceed with auto-generation if authenticated AND coming via keywords URL
     if (this.auth.isAuthenticated() && this.cs.shouldAutoGenerate) {
       this.cs.shouldAutoGenerate = false;
       const keywords = this.cs.urlKeywords();
@@ -66,31 +54,56 @@ export class AppComponent implements OnInit {
     const email = params.get('email');
     const token = params.get('token');
     const ts = params.get('ts');
+    const templateId = this.cs.urlTemplateId();
+    const hasKeywords = !!this.cs.urlKeywords();
 
     if (email && token && ts) {
+      // ── URL-based login (magic link) ──
+      this.urlAuthStatus.set('Authenticating...');
       this.isCheckingUrlAuth.set(true);
       try {
         const res = await this.auth.validate(email, token, ts);
         if (!res || !res.token) {
           this.auth.logout();
+          return;
         }
+
+        // Decide what to do after successful URL auth
+        if (templateId) {
+          this.router.navigate(['/canvas', templateId]);
+        } else if (hasKeywords) {
+          this.router.navigate(['/canvas']);
+          // Popup logic is in ngOnInit
+        } else {
+          this.router.navigate(['/dashboard']);
+        }
+
       } catch (err) {
         console.error('URL Validation failed', err);
         this.auth.logout();
       } finally {
         this.isCheckingUrlAuth.set(false);
       }
+    } else if (this.auth.isAuthenticated()) {
+        // Already logged in - maybe redirect to dashboard if at root
+        if (window.location.pathname === '/' || window.location.pathname === '/login') {
+            this.router.navigate(['/dashboard']);
+        }
     }
   }
 
   onLoginSuccess() {
-    // Re-check auto-gen logic if needed after login
-    if (this.cs.shouldAutoGenerate) {
-      const keywords = this.cs.urlKeywords();
-      this.autoGenKeywordList.set(
-        keywords.split(',').map(k => k.trim()).filter(Boolean)
-      );
+    const hasKeywords = !!this.cs.urlKeywords();
+    const hasTemplateId = !!this.cs.urlTemplateId();
+
+    if (hasTemplateId) {
+      this.router.navigate(['/canvas', this.cs.urlTemplateId()]);
+    } else if (hasKeywords) {
+      this.router.navigate(['/canvas']);
+      // Re-check auto-gen logic
       this.showPermissionPopup.set(true);
+    } else {
+      this.router.navigate(['/dashboard']);
     }
   }
 
@@ -120,36 +133,45 @@ export class AppComponent implements OnInit {
     this.setGenProgress(10, `Designing layout for ${CW}×${CH}px…`);
 
     try {
-      const sys = this.ai.buildDesignSystemPrompt(style, CW, CH, generateImage);
-      const prompt = `Create a ${style} design for the following keywords: ${keywords}`;
+      this.setGenProgress(25, 'Asking AI to design your template…');
 
-      this.setGenProgress(20, 'Asking AI to design your template…');
-      const raw = await this.ai.callClaude(sys, prompt);
+      const res: any = await this.ai.generateTemplate({
+        prompt: `Create a ${style} design for: ${keywords}`,
+        width: CW,
+        height: CH,
+        style: style,
+        templateName: 'Auto Generated Design',
+        email: this.auth.email()
+      });
 
+      this.cs.templateId.set(res.id);
       this.setGenProgress(50, 'Parsing layout…');
+
       let layout: any[];
       try {
-        layout = this.ai.parseAndFixLayout(raw, CW, CH);
+        layout = res.jsonData; 
       } catch {
-        throw new Error('Could not parse AI layout. Please try again.');
+        throw new Error('Invalid layout from server');
       }
 
       this.setGenProgress(65, 'Building canvas elements…');
-
       const imgSpecs: { id: string; prompt: string; w: number; h: number }[] = [];
+
       const newEls = layout.map((s: any) => {
         const el = specToElement(s);
         if (!el) return null;
-        if (s.type === 'img' && s.aiPrompt) {
+        if (s.type === 'img' && s.aiPrompt && !s.src && generateImage) {
           imgSpecs.push({ id: el.id, prompt: s.aiPrompt, w: s.w || 400, h: s.h || 300 });
         }
         return el;
       }).filter(Boolean);
 
       const bgSpec = layout.find((s: any) =>
-        s.type === 'rect' && s.locked && s.x <= 10 && s.y <= 10 &&
+        s.type === 'rect' && s.locked &&
+        s.x <= 10 && s.y <= 10 &&
         s.w >= CW - 20 && s.h >= CH - 20
       );
+
       if (bgSpec?.bg) this.cs.setCanvasBg(bgSpec.bg);
       this.cs.setElements(newEls as any);
 
@@ -179,19 +201,7 @@ export class AppComponent implements OnInit {
     }
   }
 
-  // ── Public handlers ────────────────────────────────────────────────────────
-
-  onTemplateCreated(cfg: TemplateConfig) {
+  onTemplateCreated(cfg: { name: string; width: number; height: number }) {
     this.cs.initTemplate(cfg.name, cfg.width, cfg.height);
-  }
-
-  openImgModalForNew() {
-    this.imgModalTargetId = null;
-    this.showImgModal = true;
-  }
-
-  openImgModalForEl(id: string) {
-    this.imgModalTargetId = id;
-    this.showImgModal = true;
   }
 }

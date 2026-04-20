@@ -16,17 +16,22 @@ export interface AuthResponse {
   providedIn: 'root'
 })
 export class AuthService {
-  
+
   private readonly BASE_URL = 'https://localhost:7012/api/Auth';
   private readonly TOKEN_KEY = 'auth_token';
+  public readonly EMAIL = 'email';
 
   isAuthenticated = signal<boolean>(false);
   token = signal<string | null>(null);
+  email = signal<string | null>(null)
 
   constructor(private http: HttpClient) {
     const savedToken = localStorage.getItem(this.TOKEN_KEY);
+    const savedEmail = localStorage.getItem(this.EMAIL);
+
     if (savedToken) {
       this.token.set(savedToken);
+      this.email.set(savedEmail);
       this.isAuthenticated.set(true);
     }
   }
@@ -40,7 +45,7 @@ export class AuthService {
     const payload: VerifyOtpRequest = { email, code };
     const res = await firstValueFrom(this.http.post<AuthResponse>(`${this.BASE_URL}/verify-otp`, payload));
     if (res.token) {
-      this.saveToken(res.token);
+      this.saveToken(res.token, email);
     }
     return res;
   }
@@ -53,20 +58,24 @@ export class AuthService {
 
     const res = await firstValueFrom(this.http.get<AuthResponse>(`${this.BASE_URL}/validate`, { params }));
     if (res.token) {
-      this.saveToken(res.token);
+      this.saveToken(res.token, email);
     }
     return res;
   }
 
-  private saveToken(token: string) {
+  private saveToken(token: string, email: string) {
     localStorage.setItem(this.TOKEN_KEY, token);
+    localStorage.setItem(this.EMAIL, email)
     this.token.set(token);
+    this.email.set(email);
     this.isAuthenticated.set(true);
   }
 
   logout() {
     localStorage.removeItem(this.TOKEN_KEY);
+    localStorage.removeItem(this.EMAIL);
     this.token.set(null);
+    this.email.set(null);
     this.isAuthenticated.set(false);
   }
 }

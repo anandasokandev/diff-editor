@@ -83,7 +83,7 @@ export function uid(): string {
 }
 
 export function specToElement(s: any): CanvasElement | null {
-  const base = { id: uid(), locked: s.locked || false };
+  const base = { id: s.id || uid(), locked: s.locked || false };
   if (s.type === 'rect') {
     return { ...base, type: 'rect', x: s.x || 0, y: s.y || 0, w: s.w || 100, h: s.h || 100, bg: s.bg || '#7c5cfc', radius: s.radius || 0 } as RectElement;
   }

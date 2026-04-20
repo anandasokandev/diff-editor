@@ -1,0 +1,50 @@
+<!-- Template Setup (shown first) -->
+@if (cs.showSetup()) {
+<app-template-setup [canClose]="cs.hasExistingCanvas()" (created)="onTemplateCreated($event)"
+    (closed)="cs.showSetup.set(false)" />
+}
+
+<!-- Main Editor Workspace -->
+@if (!cs.showSetup()) {
+<div class="app-shell">
+    <app-topbar 
+        (openAiModal)="showAiModal = true" 
+        (openImgModal)="openImgModalForNew()"
+        (newDesign)="cs.showSetup.set(true)"
+        (openDashboard)="goHome()" />
+    
+    <div class="workspace">
+        <app-sidebar (openAiModal)="showAiModal = true" (openImgModal)="openImgModalForNew()" />
+        <app-canvas />
+    </div>
+
+    <!-- Modals -->
+    <app-ai-modal [visible]="showAiModal" (close)="showAiModal = false" />
+    <app-img-modal [visible]="showImgModal" [targetId]="imgModalTargetId" (close)="showImgModal = false" />
+</div>
+}
+
+<!-- Template Loading Overlay -->
+@if (loadingTemplate()) {
+<div class="overlay-backdrop">
+    <div class="autogen-card">
+        <div class="autogen-spinner"></div>
+        <div class="autogen-title">Loading your design...</div>
+    </div>
+</div>
+}
+
+<!-- Error Message -->
+@if (error()) {
+<div class="overlay-backdrop">
+    <div class="error-modal">
+        <div class="error-msg">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            {{ error() }}
+        </div>
+        <button class="retry-btn" (click)="goHome()">Back to Dashboard</button>
+    </div>
+</div>
+}

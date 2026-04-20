@@ -16,6 +16,7 @@ export class TopbarComponent {
   @Output() openAiModal = new EventEmitter<void>();
   @Output() openImgModal = new EventEmitter<void>();
   @Output() newDesign = new EventEmitter<void>();
+  @Output() openDashboard = new EventEmitter<void>();
 
   downloading = false;
 
@@ -54,7 +55,13 @@ export class TopbarComponent {
       console.log('---------------------------');
 
       // DownloadService now reads all data from CanvasService — no DOM element needed
-      await this.dlSvc.downloadAsPng(null as any, `${this.cs.templateName()}.png`);
+      await this.dlSvc.downloadAsPng(
+        this.cs.elements(),
+        this.cs.canvasWidth(),
+        this.cs.canvasHeight(),
+        this.cs.canvasBg(),
+        `${this.cs.templateName()}.png`
+      );
     } catch (err) {
       console.error('Download failed:', err);
       alert('Export failed. Please try again.');

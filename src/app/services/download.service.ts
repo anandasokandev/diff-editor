@@ -1,114 +1,46 @@
 import { Injectable } from '@angular/core';
-import { CanvasService } from './canvas.service';
 import { CanvasElement, RectElement, TextElement, ImgElement, getFontFamily } from '../models/canvas.model';
 
 @Injectable({ providedIn: 'root' })
 export class DownloadService {
 
-  constructor(private cs: CanvasService) { }
+  constructor() { }
 
   /**
    * Renders the design to a PNG at EXACT template pixel dimensions
-   * using the browser's native Canvas 2D API — completely zoom/DOM-independent.
-   *
-   * Rendering pipeline:
-   *   1. Create an off-screen <canvas> at canvasWidth × canvasHeight
-   *   2. Fill with canvasBg (supports solid colours AND CSS gradients via a
-   *      temporary div + getComputedStyle conversion trick)
-   *   3. Draw every element in z-order: rects, images, text
-   *   4. Export as PNG and trigger browser download
+   * using a pure Data-to-Canvas 2D pipeline.
    */
   async downloadAsPng(
-    _ignored: HTMLElement,
+    els: CanvasElement[],
+    CW: number,
+    CH: number,
+    bg: string,
     filename = 'craftly-design.png'
   ): Promise<void> {
-    const nativeEl = this.cs.canvasNativeEl;
-    if (!nativeEl) {
-      await this.downloadFallback(filename);
-      return;
-    }
+    // Ensure all custom fonts are loaded before we start drawing to canvas
+    await document.fonts.ready;
 
-    // Save and clear selection so resize handles & outlines aren't captured
-    const prevSelectedId = this.cs.selectedId();
-    const prevEditingId = this.cs.editingId();
-    this.cs.selectedId.set(null);
-    this.cs.editingId.set(null);
-
-    // We must wait a tiny bit for Angular to update the DOM (removing classes/handles)
-    await new Promise(r => setTimeout(r, 50));
-
-    try {
-      const html2canvas = (await import('html2canvas')).default;
-
-      // Temporarily remove CSS scale to capture at natural 1:1 size
-      const wrapper = nativeEl.parentElement as HTMLElement;
-      const prevTransform = wrapper?.style.transform ?? '';
-      if (wrapper) wrapper.style.transform = 'scale(1)';
-
-      const capturedCanvas = await html2canvas(nativeEl, {
-        scale: 1,
-        useCORS: true,
-        allowTaint: false,
-        backgroundColor: null
-      });
-
-      // Restore CSS scale & UI selection immediately
-      if (wrapper) wrapper.style.transform = prevTransform;
-      this.cs.selectedId.set(prevSelectedId);
-      this.cs.editingId.set(prevEditingId);
-
-      const dataUrl = capturedCanvas.toDataURL('image/png', 1.0);
-      this.sendToParent(dataUrl);
-
-      capturedCanvas.toBlob(blob => {
-        if (!blob) return;
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.download = filename;
-        link.href = url;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      }, 'image/png', 1.0);
-    } catch (e) {
-      console.warn('html2canvas failed, falling back', e);
-
-      // Restore state
-      this.cs.selectedId.set(prevSelectedId);
-      this.cs.editingId.set(prevEditingId);
-      const wrapper = nativeEl.parentElement as HTMLElement;
-      if (wrapper && wrapper.style.transform === 'scale(1)') {
-        wrapper.style.transform = `scale(${this.cs.zoom()})`; // fallback restore
-      }
-
-      await this.downloadFallback(filename);
-    }
-  }
-
-  private async downloadFallback(filename: string): Promise<void> {
-    const CW = this.cs.canvasWidth();
-    const CH = this.cs.canvasHeight();
-    const bg = this.cs.canvasBg();
-    const els = this.cs.elements();
-
+    // 1. Create a pristine off-screen canvas at exact 1:1 scale
     const oc = document.createElement('canvas');
     oc.width = CW;
     oc.height = CH;
-    const ctx = oc.getContext('2d')!;
+    const ctx = oc.getContext('2d', { alpha: false })!;
 
+    // 2. Draw Background
     await this.drawBackground(ctx, CW, CH, bg);
 
+    // 3. Draw Elements in order
     for (const el of els) {
       try {
         if (el.type === 'rect') await this.drawRect(ctx, el as RectElement);
         if (el.type === 'text') this.drawText(ctx, el as TextElement);
         if (el.type === 'img') await this.drawImg(ctx, el as ImgElement);
       } catch (e) {
-        console.warn('Element render failed', el, e);
+        console.warn('Manual render failed for element:', el, e);
       }
     }
 
+    // 4. Export and Trigger Download
     const dataUrl = oc.toDataURL('image/png', 1.0);
     this.sendToParent(dataUrl);
 
@@ -123,6 +55,55 @@ export class DownloadService {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
     }, 'image/png', 1.0);
+  }
+
+/**
+   * Generates a PNG Blob of the current design.
+   */
+  async exportAsBlob(
+    els: CanvasElement[],
+    CW: number,
+    CH: number,
+    bg: string
+  ): Promise<Blob> {
+    // Ensure fonts and images are fully loaded so we don't capture empty states
+    await document.fonts.ready;
+    await this.preloadImages(els);
+
+    const oc = document.createElement('canvas');
+    oc.width = CW;
+    oc.height = CH;
+    const ctx = oc.getContext('2d', { alpha: false })!;
+
+    await this.drawBackground(ctx, CW, CH, bg);
+
+    for (const el of els) {
+      if (el.type === 'rect') await this.drawRect(ctx, el as RectElement);
+      if (el.type === 'text') this.drawText(ctx, el as TextElement);
+      if (el.type === 'img') await this.drawImg(ctx, el as ImgElement);
+    }
+
+    return new Promise((resolve, reject) => {
+      oc.toBlob(blob => {
+        if (blob) resolve(blob);
+        else reject(new Error('Canvas blob generation failed'));
+      }, 'image/png', 0.8);
+    });
+  }
+
+  /** Ensures all image elements in the list are preloaded into memory */
+  private async preloadImages(els: CanvasElement[]): Promise<void> {
+    const images = els.filter(el => el.type === 'img' && (el as ImgElement).src) as ImgElement[];
+    const promises = images.map(imgEl => {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => resolve(true);
+        img.onerror = () => resolve(false);
+        img.src = imgEl.src!;
+      });
+    });
+    await Promise.all(promises);
   }
 
   /** Broadcasts the exported image data back to the parent window or opener if it exists. */
@@ -235,8 +216,11 @@ export class DownloadService {
     ctx.rect(x, y, w, lineH * wrapped.length + padY * 2 + 2);
     ctx.clip();
 
+    // 3. Render lines with a vertical offset to match CSS 'line-height' centering
+    const leading = (lineH - fontSize) / 2;
+
     wrapped.forEach((line, i) => {
-      ctx.fillText(line, textX, y + padY + i * lineH);
+      ctx.fillText(line, textX, y + padY + leading + (i * lineH));
     });
 
     ctx.restore();

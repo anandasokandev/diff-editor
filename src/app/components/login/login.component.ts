@@ -1,6 +1,7 @@
-import { Component, signal, output } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
 
 @Component({
@@ -307,9 +308,10 @@ export class LoginComponent {
   loading = signal(false);
   error = signal<string | null>(null);
 
-  loginSuccess = output<void>();
-
-  constructor(private auth: AuthService) {}
+  constructor(
+    private auth: AuthService,
+    private router: Router
+  ) {}
 
   async sendOtp() {
     if (!this.email) return;
@@ -331,7 +333,7 @@ export class LoginComponent {
     this.error.set(null);
     try {
       await this.auth.verifyOtp(this.email, this.otp);
-      this.loginSuccess.emit();
+      this.router.navigate(['/dashboard']);
     } catch (err: any) {
       this.error.set(err.error?.message || 'Invalid OTP. Please try again.');
     } finally {
